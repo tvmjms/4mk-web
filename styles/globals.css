@@ -1,0 +1,18 @@
+/* Tailwind v4: single import */
+@import "tailwindcss";
+
+/* Declare Poppins as the sans stack (v4 theme tokens) */
+@theme {
+  --font-sans: "Poppins", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans",
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji";
+}
+
+/* Add any global resets you like; NO @apply font-sans here */
+:root {
+  color-scheme: light;
+}
+
+/* Example: keep selection and focus look lightweight */
+::selection { background: rgb(255 228 230 / 0.9); }
