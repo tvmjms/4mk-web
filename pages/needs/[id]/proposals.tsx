@@ -77,12 +77,17 @@ export default function NeedProposalsPage() {
     // Fetch helper info for each proposal
     const proposalsWithHelpers: ProposalWithHelper[] = [];
     for (const proposal of proposalsData || []) {
-      // Get helper's auth.users email via a supabase function or by querying auth metadata
-      // Note: We can't directly query auth.users from the client, so we'll use the helper_id
-      // In a real app, you might want to have a user_profile table with display names
+      // Try to get helper's profile info
+      const { data: profileData } = await supabase
+        .from("user_profile")
+        .select("display_name")
+        .eq("user_id", proposal.helper_id)
+        .maybeSingle();
+
       proposalsWithHelpers.push({
         ...proposal,
-        helper_email: `User ${proposal.helper_id.substring(0, 8)}...`,
+        helper_display_name: profileData?.display_name || undefined,
+        helper_email: `Helper ${proposal.helper_id.substring(0, 8)}`,
       });
     }
 
@@ -200,7 +205,9 @@ export default function NeedProposalsPage() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-neutral-900 mb-1">
-                        Helper: {proposal.helper_email}
+                        {proposal.helper_display_name 
+                          ? `Helper: ${proposal.helper_display_name}`
+                          : proposal.helper_email}
                       </p>
                       <p className="text-xs text-neutral-600">
                         Proposed on: {new Date(proposal.created_at).toLocaleString()}
