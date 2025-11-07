@@ -18,6 +18,7 @@ export default function NeedDetailPage() {
   const [need, setNeed] = useState<Need | null>(null);
   const [fulfill, setFulfill] = useState<Fulfillment | null>(null); // accepted/proposed latest
   const [myOffer, setMyOffer] = useState<Fulfillment | null>(null);  // current user's proposal
+  const [proposalCount, setProposalCount] = useState(0); // count of proposed offers for owner
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -49,6 +50,7 @@ export default function NeedDetailPage() {
 
       // If logged in, check whether *this* user has already proposed
       let my: Fulfillment | null = null;
+      let pCount = 0;
       if (user?.id) {
         const { data: myData } = await supabase
           .from("fulfillment")
@@ -59,12 +61,23 @@ export default function NeedDetailPage() {
           .limit(1)
           .maybeSingle();
         my = myData ?? null;
+
+        // If user is the owner, get count of proposed offers
+        if (nData && nData.owner_id === user.id) {
+          const { count } = await supabase
+            .from("fulfillment")
+            .select("*", { count: "exact", head: true })
+            .eq("need_id", id)
+            .eq("status", "proposed");
+          pCount = count ?? 0;
+        }
       }
 
       if (nErr) setErr(nErr.message);
       setNeed(nData || null);
       setFulfill(fData || null);
       setMyOffer(my);
+      setProposalCount(pCount);
       setLoading(false);
     })();
   }, [id, supabase, user?.id]);
@@ -162,6 +175,16 @@ export default function NeedDetailPage() {
             >
               {status}
             </span>
+
+            {/* Owner: View Proposals button */}
+            {isOwner && proposalCount > 0 && (
+              <Link
+                href={`/needs/${id}/proposals`}
+                className="block mb-6 px-4 py-2 rounded text-white bg-blue-600 hover:bg-blue-700 text-center transition"
+              >
+                View Proposals ({proposalCount})
+              </Link>
+            )}
 
             {/* The button */}
             <button
