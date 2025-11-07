@@ -41,7 +41,7 @@ Created `.vscode/extensions.json` recommending:
 
 3. **Verify Copilot is Running**
    - Check the bottom-right status bar for the Copilot icon
-   - If you see a warning or error icon, click it for more details
+   - If you see a warning or error icon on the Copilot icon, click on the icon to view details
    - You may need to sign in to GitHub Copilot again
 
 ### If Copilot Still Doesn't Work:
