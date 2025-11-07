@@ -1,7 +1,9 @@
 // components/NeedComments.tsx
 // Comment system for needs with media upload and AI moderation
 
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState, FormEvent } from 'react';
+import { useRouter } from 'next/router';
+import { useSupabaseClient, useUser } from "@supabase/auth-helpers-react";
 import { supabase } from '@/lib/supabase';
 import { contentModerator } from '@/lib/contentModerator';
 import MediaViewer from './MediaViewer';
@@ -28,6 +30,7 @@ interface NeedCommentsProps {
 }
 
 export default function NeedComments({ needId, currentUserId }: NeedCommentsProps) {
+  const router = useRouter();
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [mediaFiles, setMediaFiles] = useState<any[]>([]);
@@ -35,6 +38,9 @@ export default function NeedComments({ needId, currentUserId }: NeedCommentsProp
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [commentWarning, setCommentWarning] = useState<string | null>(null);
+  
+  // Create login link with current page as redirect destination
+  const loginWithRedirect = `/login?next=${encodeURIComponent(router.asPath)}`;
 
   // Simple inappropriate content detection for immediate warnings
   const checkInappropriateContent = (text: string): string | null => {
@@ -311,7 +317,7 @@ export default function NeedComments({ needId, currentUserId }: NeedCommentsProp
       {!currentUserId && (
         <div className="text-center p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <p className="text-sm text-blue-700">
-            <a href="/login" className="font-medium hover:underline">Sign in</a> to offer help or ask questions
+            <a href={loginWithRedirect} className="font-medium hover:underline">Sign in</a> to offer help or ask questions
           </p>
         </div>
       )}

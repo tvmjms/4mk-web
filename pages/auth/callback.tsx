@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 import { useSupabaseClient } from "@supabase/auth-helpers-react";
 import Link from 'next/link';
 
 export default function Callback() {
   const supabase = useSupabaseClient();
+  const router = useRouter();
   const [status, setStatus] = useState('Finishing sign-in...');
 
   useEffect(() => {
@@ -14,15 +16,23 @@ export default function Callback() {
         return;
       }
       if (!data.session) await supabase.auth.refreshSession();
+      
+      // Get redirect destination from URL params
+      const redirectTo = router.query.next as string || '/dashboard';
+      
       setStatus('Signed in! 🎉 Redirecting…');
-      setTimeout(() => (window.location.href = '/dashboard'), 600);
+      setTimeout(() => {
+        router.push(redirectTo);
+      }, 600);
     })();
-  }, [supabase]);
+  }, [supabase, router]);
+
+  const redirectTo = router.query.next as string || '/dashboard';
 
   return (
     <main style={{ padding: 24 }}>
       <p>{status}</p>
-      <p><Link href="/dashboard">Go to dashboard</Link></p>
+      <p><Link href={redirectTo}>Continue to your destination</Link></p>
     </main>
   );
 }

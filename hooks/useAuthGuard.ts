@@ -16,6 +16,16 @@ export function useAuthGuard(options: AuthGuardOptions = {}) {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // Create redirect URL with current page as 'next' parameter
+  const createRedirectUrl = (baseRedirectTo: string) => {
+    const currentPath = router.asPath;
+    // Don't redirect to login if already on login page
+    if (currentPath.startsWith('/login') || currentPath.startsWith('/auth/')) {
+      return baseRedirectTo;
+    }
+    return `${baseRedirectTo}?next=${encodeURIComponent(currentPath)}`;
+  };
+
   useEffect(() => {
     if (!requireAuth) {
       setIsAuthenticated(true);
@@ -25,8 +35,9 @@ export function useAuthGuard(options: AuthGuardOptions = {}) {
 
     const timeoutId = setTimeout(() => {
       if (session === null) {
-        console.log('Auth Guard: No session found, redirecting to:', redirectTo);
-        router.replace(redirectTo);
+        const redirectUrl = createRedirectUrl(redirectTo);
+        console.log('Auth Guard: No session found, redirecting to:', redirectUrl);
+        router.replace(redirectUrl);
       } else if (session?.user) {
         console.log('Auth Guard: Session found for user:', session.user.id);
         setIsAuthenticated(true);
@@ -41,8 +52,9 @@ export function useAuthGuard(options: AuthGuardOptions = {}) {
       setIsLoading(false);
     } else if (session === null) {
       clearTimeout(timeoutId);
-      console.log('Auth Guard: Immediate null session, redirecting to:', redirectTo);
-      router.replace(redirectTo);
+      const redirectUrl = createRedirectUrl(redirectTo);
+      console.log('Auth Guard: Immediate null session, redirecting to:', redirectUrl);
+      router.replace(redirectUrl);
     }
 
     return () => clearTimeout(timeoutId);

@@ -7,6 +7,9 @@ export default function Header() {
   const session = useSession();
   const supabase = useSupabaseClient();
   const router = useRouter();
+  
+  // Create login link with current page as redirect destination
+  const loginWithRedirect = `/login?next=${encodeURIComponent(router.asPath)}`;
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -41,7 +44,7 @@ export default function Header() {
               <span className="text-white/90 text-[10px] font-medium">{session.user?.email}</span>
             </>
           ) : (
-            <Link href="/login" className="text-white hover:text-white/80 font-semibold">
+            <Link href={loginWithRedirect} className="text-white hover:text-white/80 font-semibold">
               Login
             </Link>
           )}

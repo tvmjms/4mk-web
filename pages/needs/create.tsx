@@ -1,6 +1,6 @@
 // pages/needs/create.tsx
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/router";
 import { useSupabaseClient } from "@supabase/auth-helpers-react";
 import { usStatesAndCities } from "@/utils/usStatesAndCities";
@@ -90,6 +90,16 @@ export default function NewNeedPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedFormData, setSubmittedFormData] = useState<string | null>(null);
   const [submissionId, setSubmissionId] = useState<string | null>(null);
+  
+  // 🔍 DEBUG: Track component renders to detect double-rendering
+  const renderCount = useRef(0);
+  renderCount.current += 1;
+  console.log('🔄 COMPONENT RENDER #', renderCount.current, {
+    timestamp: new Date().toISOString(),
+    isSubmitting,
+    saving,
+    showConfirmation
+  });
 
   useEffect(() => {
     // Clear any daily limit restrictions from browser storage (only once)
@@ -98,11 +108,43 @@ export default function NewNeedPage() {
     localStorage.removeItem('lastSubmissionDate');
     sessionStorage.removeItem('dailyLimit');
     sessionStorage.removeItem('submissionCount');
+
+    // 🔍 DEBUG: Global click tracker to detect unexpected clicks
+    const globalClickHandler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const inputElement = target as HTMLInputElement;
+      if (inputElement?.type === 'submit' || target?.closest('form')) {
+        console.log('🌍 GLOBAL CLICK on form element:', {
+          timestamp: new Date().toISOString(),
+          tagName: target.tagName,
+          type: inputElement?.type || 'no-type',
+          className: target.className,
+          id: target.id,
+          detail: e.detail,
+          isTrusted: e.isTrusted
+        });
+      }
+    };
+
+    document.addEventListener('click', globalClickHandler, true);
+    return () => document.removeEventListener('click', globalClickHandler, true);
   }, []); // Only run once on mount
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
+
+    // 🔍 DEBUG: Track event details
+    console.log('🎯 SUBMISSION EVENT DETECTED:', {
+      timestamp: new Date().toISOString(),
+      eventType: e.type,
+      eventTarget: (e.target as HTMLElement)?.tagName || 'unknown',
+      isSubmitting,
+      saving,
+      submissionId,
+      eventPhase: e.eventPhase,
+      isTrusted: e.isTrusted
+    });
 
     // Stronger duplicate prevention
     if (isSubmitting || saving) {
@@ -570,12 +612,28 @@ export default function NewNeedPage() {
                 type="submit"
                 className={`w-full py-1.5 rounded-md text-center font-semibold text-xs mb-3 transition-all ${
                   saving || isSubmitting
-                    ? "bg-gray-400 cursor-not-allowed" 
+                    ? "bg-gray-400 cursor-not-allowed animate-pulse" 
                     : "btn-turquoise hover:opacity-90"
                 }`}
                 disabled={saving || isSubmitting}
+                onClick={(e) => {
+                  // 🔍 DEBUG: Track button clicks specifically
+                  console.log('🖱️ BUTTON CLICK DETECTED:', {
+                    timestamp: new Date().toISOString(),
+                    eventType: e.type,
+                    button: e.button,
+                    buttons: e.buttons,
+                    detail: e.detail, // Click count (1 = single, 2 = double)
+                    clientX: e.clientX,
+                    clientY: e.clientY,
+                    isTrusted: e.isTrusted,
+                    currentlySubmitting: isSubmitting || saving
+                  });
+                  
+                  // Don't prevent default - let form submission handle it
+                }}
               >
-                {saving || isSubmitting ? "Creating… Please wait" : "Create Need"}
+                {saving || isSubmitting ? "Creating… Please wait (do not click again)" : "Create Need"}
               </button>
 
               {/* Confirmation Message */}
@@ -590,7 +648,11 @@ export default function NewNeedPage() {
                   </p>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => setShowReceipt(true)}
+                      onClick={() => {
+                        setShowReceipt(true);
+                        // Clear any lingering errors when showing receipt for successful submission
+                        setErr(null);
+                      }}
                       className="flex-1 bg-blue-600 text-white py-1.5 px-3 rounded text-xs font-medium hover:bg-blue-700"
                     >
                       Show Receipt
@@ -754,7 +816,7 @@ export default function NewNeedPage() {
                     </button>
                   )}
                 </div>
-                {err && (
+                {err && !needId && (
                   <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded">
                     <p className="text-xs text-red-700">{err}</p>
                     {(err.toLowerCase().includes('email') || err.toLowerCase().includes('configuration')) && (

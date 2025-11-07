@@ -1,9 +1,14 @@
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 export default function NavBar() {
   const [email, setEmail] = useState<string | null>(null);
+  const router = useRouter();
+  
+  // Create login link with current page as redirect destination
+  const loginWithRedirect = `/login?next=${encodeURIComponent(router.asPath)}`;
 
   useEffect(() => {
     let ignore = false;
@@ -50,7 +55,7 @@ export default function NavBar() {
             </>
           ) : (
             <Link
-              href="/login"
+              href={loginWithRedirect}
               className="rounded-md border px-3 py-1 hover:bg-gray-50"
             >
               Log in

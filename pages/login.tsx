@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useRouter } from 'next/router'
 import Link from 'next/link'
@@ -10,17 +10,41 @@ export default function Login() {
   const [message, setMessage] = useState('')
   const router = useRouter()
 
+  // Get the redirect destination from URL params
+  const redirectTo = router.query.next as string || '/'
+
+  useEffect(() => {
+    // If already logged in, redirect to intended destination
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        router.replace(redirectTo)
+      }
+    }
+    checkUser()
+  }, [router, redirectTo])
+
   const handleLogin = async () => {
     setLoading(true)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) setMessage(error.message)
-    else router.push('/')
+    if (error) {
+      setMessage(error.message)
+    } else {
+      // Redirect to intended destination after successful login
+      router.push(redirectTo)
+    }
     setLoading(false)
   }
 
   const handleMagicLink = async () => {
     setLoading(true)
-    const { error } = await supabase.auth.signInWithOtp({ email })
+    const { error } = await supabase.auth.signInWithOtp({ 
+      email,
+      options: {
+        // Include redirect destination in magic link
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`
+      }
+    })
     setMessage(error ? error.message : 'Check your email for a login link!')
     setLoading(false)
   }
