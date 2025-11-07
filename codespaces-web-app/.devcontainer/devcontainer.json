@@ -1,0 +1,18 @@
+{
+  "name": "codespaces-web-app",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "settings": {
+    "terminal.integrated.shell.linux": "/bin/bash"
+  },
+  "extensions": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "ms-azuretools.vscode-docker",
+    "ms-vscode.vscode-typescript-tslint-plugin"
+  ],
+  "postCreateCommand": "npm install",
+  "remoteUser": "vscode"
+}
