@@ -1,5 +1,5 @@
 ﻿// hooks/useAuthGuard.ts
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useSession } from '@supabase/auth-helpers-react';
 
@@ -17,14 +17,14 @@ export function useAuthGuard(options: AuthGuardOptions = {}) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Create redirect URL with current page as 'next' parameter
-  const createRedirectUrl = (baseRedirectTo: string) => {
+  const createRedirectUrl = useCallback((baseRedirectTo: string) => {
     const currentPath = router.asPath;
     // Don't redirect to login if already on login page
     if (currentPath.startsWith('/login') || currentPath.startsWith('/auth/')) {
       return baseRedirectTo;
     }
     return `${baseRedirectTo}?next=${encodeURIComponent(currentPath)}`;
-  };
+  }, [router.asPath]);
 
   useEffect(() => {
     if (!requireAuth) {

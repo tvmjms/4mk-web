@@ -8,6 +8,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const [checking, setChecking] = useState(true) // Add checking state
   const router = useRouter()
 
   // Get the redirect destination from URL params
@@ -16,13 +17,27 @@ export default function Login() {
   useEffect(() => {
     // If already logged in, redirect to intended destination
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        router.replace(redirectTo)
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) {
+          const destination = (router.query.next as string) || '/'
+          console.log('Login page: User already logged in, redirecting to:', destination)
+          router.replace(destination)
+        } else {
+          console.log('Login page: No session found, staying on login page')
+          setChecking(false) // Done checking, show login form
+        }
+      } catch (error) {
+        console.error('Login page: Error checking session:', error)
+        setChecking(false) // Show login form even if there's an error
       }
     }
-    checkUser()
-  }, [router, redirectTo])
+    
+    // Only run after router is ready to avoid issues with router.query
+    if (router.isReady) {
+      checkUser()
+    }
+  }, [router.isReady, router.query.next]) // Wait for router to be ready
 
   const handleLogin = async () => {
     setLoading(true)
@@ -47,6 +62,17 @@ export default function Login() {
     })
     setMessage(error ? error.message : 'Check your email for a login link!')
     setLoading(false)
+  }
+
+  // Show loading while checking authentication status
+  if (checking) {
+    return (
+      <div className="flex items-center justify-center min-h-screen px-4">
+        <div className="text-center">
+          <div className="text-white text-lg">Checking authentication...</div>
+        </div>
+      </div>
+    )
   }
 
   return (
