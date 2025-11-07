@@ -241,6 +241,9 @@ export default function NewNeedPage() {
       setNeedId(result.needId);
       setShowConfirmation(true);
       
+      // CRITICAL: Clear error state on successful submission
+      setErr(null);
+      
       // Reset form data hash after successful submission
       setSubmittedFormData(null);
     } catch (fetchError) {
@@ -388,8 +391,8 @@ export default function NewNeedPage() {
       <div className="mx-auto max-w-6xl py-4">
         <h1 className="text-lg font-bold mb-4 text-slate-800 text-center">Create a Need</h1>
         
-        {/* Error Message */}
-        {err && <p className="text-red-600 mb-4 text-center bg-red-50 p-2 rounded text-xs">{err}</p>}
+        {/* Error Message - Only show if not showing confirmation */}
+        {err && !showConfirmation && <p className="text-red-600 mb-4 text-center bg-red-50 p-2 rounded text-xs">{err}</p>}
 
         <form onSubmit={onSubmit}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-4">
@@ -571,13 +574,6 @@ export default function NewNeedPage() {
                     : "btn-turquoise hover:opacity-90"
                 }`}
                 disabled={saving || isSubmitting}
-                onClick={(e) => {
-                  if (saving || isSubmitting) {
-                    e.preventDefault();
-                    console.log('Button click blocked - form already submitting');
-                    return false;
-                  }
-                }}
               >
                 {saving || isSubmitting ? "Creating… Please wait" : "Create Need"}
               </button>
