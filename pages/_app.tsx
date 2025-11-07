@@ -1,5 +1,5 @@
 // pages/_app.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/router";
 import { createPagesBrowserClient } from "@supabase/auth-helpers-nextjs";
 import { SessionContextProvider } from "@supabase/auth-helpers-react";
@@ -12,21 +12,37 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 export default function MyApp({ Component, pageProps }: AppProps) {
   const [supabase] = useState(() => createPagesBrowserClient());
   const router = useRouter();
+  const redirectTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, _session) => {
-      // Only redirect on explicit sign-in events (PASSWORD_RECOVERY, USER_UPDATED after sign-in)
-      // Don't redirect on INITIAL_SESSION or TOKEN_REFRESHED
-      if (event === "SIGNED_OUT") {
-        router.push("/login");
+      console.log('🔑 Auth state change:', event, 'on page:', router.asPath);
+      
+      // Clear any pending redirects
+      if (redirectTimeout.current) {
+        clearTimeout(redirectTimeout.current);
+        redirectTimeout.current = null;
       }
-      // Remove auto-redirect on SIGNED_IN to prevent tab-switch redirects
+      
+      // Only redirect on explicit sign-out events with a small delay to prevent flicker
+      if (event === "SIGNED_OUT" && 
+          !router.asPath.startsWith('/login') && 
+          !router.asPath.startsWith('/auth/') &&
+          !router.asPath.startsWith('/register')) {
+        console.log('🔄 Scheduling redirect to login after sign out');
+        redirectTimeout.current = setTimeout(() => {
+          router.push("/login");
+        }, 100); // Small delay to prevent flicker
+      }
     });
 
     return () => {
       subscription.unsubscribe();
+      if (redirectTimeout.current) {
+        clearTimeout(redirectTimeout.current);
+      }
     };
   }, [supabase, router]);
 

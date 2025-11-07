@@ -1,14 +1,17 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 
 export default function NavBar() {
   const [email, setEmail] = useState<string | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const router = useRouter();
   
-  // Create login link with current page as redirect destination
-  const loginWithRedirect = `/login?next=${encodeURIComponent(router.asPath)}`;
+  // Memoize login link to prevent unnecessary re-renders
+  const loginWithRedirect = useMemo(() => {
+    return `/login?next=${encodeURIComponent(router.asPath)}`;
+  }, [router.asPath]);
 
   useEffect(() => {
     let ignore = false;
@@ -29,10 +32,17 @@ export default function NavBar() {
     };
   }, []);
 
-  const onLogout = async () => {
-    await supabase.auth.signOut();
-    window.location.href = "/";
-  };
+  const onLogout = useCallback(async () => {
+    try {
+      setIsLoggingOut(true);
+      await supabase.auth.signOut();
+      window.location.href = "/";
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  }, []);
 
   return (
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur border-b">
@@ -48,9 +58,12 @@ export default function NavBar() {
               <span className="text-gray-500 hidden sm:inline">{email}</span>
               <button
                 onClick={onLogout}
-                className="rounded-md border px-3 py-1 hover:bg-gray-50"
+                disabled={isLoggingOut}
+                className={`rounded-md border px-3 py-1 hover:bg-gray-50 ${
+                  isLoggingOut ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
               >
-                Log out
+                {isLoggingOut ? 'Logging out...' : 'Log out'}
               </button>
             </>
           ) : (

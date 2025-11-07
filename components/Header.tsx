@@ -2,19 +2,30 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useSession, useSupabaseClient } from "@supabase/auth-helpers-react";
+import { useMemo, useCallback, useState } from "react";
 
 export default function Header() {
   const session = useSession();
   const supabase = useSupabaseClient();
   const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   
-  // Create login link with current page as redirect destination
-  const loginWithRedirect = `/login?next=${encodeURIComponent(router.asPath)}`;
+  // Memoize login link to prevent unnecessary re-renders
+  const loginWithRedirect = useMemo(() => {
+    return `/login?next=${encodeURIComponent(router.asPath)}`;
+  }, [router.asPath]);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push("/login");
-  };
+  const handleLogout = useCallback(async () => {
+    try {
+      setIsLoggingOut(true);
+      await supabase.auth.signOut();
+      router.push("/login");
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  }, [supabase, router]);
 
   return (
     <header className="bg-turquoise-400 px-4 py-1 header-double-gold relative">
@@ -38,8 +49,14 @@ export default function Header() {
           </Link>
           {session ? (
             <>
-              <button onClick={handleLogout} className="text-white hover:text-white/80 font-semibold">
-                Logout
+              <button 
+                onClick={handleLogout} 
+                disabled={isLoggingOut}
+                className={`text-white hover:text-white/80 font-semibold ${
+                  isLoggingOut ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                {isLoggingOut ? 'Logging out...' : 'Logout'}
               </button>
               <span className="text-white/90 text-[10px] font-medium">{session.user?.email}</span>
             </>
