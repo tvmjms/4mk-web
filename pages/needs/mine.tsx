@@ -173,6 +173,11 @@ export default function MyNeeds() {
                     {c.proposed} proposed • {c.accepted} accepted • {c.fulfilled} fulfilled
                   </div>
                   <div style={{ marginTop: 4 }}>
+                    {c.proposed > 0 && (
+                      <Link href={`/needs/${n.id}/proposals`} style={{ marginRight: 8 }}>
+                        <button>View Proposals ({c.proposed})</button>
+                      </Link>
+                    )}
                     <button onClick={() => markFulfilled(n.id)}>Mark fulfilled</button>
                   </div>
                 </li>
