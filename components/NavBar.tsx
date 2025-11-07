@@ -1,11 +1,9 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useSupabaseClient, useUser } from "@supabase/auth-helpers-react";
-const supabase = useSupabaseClient();
-const user = useUser();
-
+import { useSupabaseClient } from "@supabase/auth-helpers-react";
 
 export default function NavBar() {
+  const supabase = useSupabaseClient();
   const [email, setEmail] = useState<string | null>(null);
 
   useEffect(() => {
@@ -25,7 +23,7 @@ export default function NavBar() {
       ignore = true;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [supabase.auth]);
 
   const onLogout = async () => {
     await supabase.auth.signOut();

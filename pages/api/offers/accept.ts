@@ -67,7 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     return res.status(200).json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Error in /api/offers/accept:", e);
     return res.status(500).json({ error: "Server error" });
   }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabase';
@@ -127,7 +127,7 @@ export default function MyNeeds() {
   const totalPagesUn = Math.max(1, Math.ceil(cntUn / PAGE_SIZE));
   const totalPagesFul = Math.max(1, Math.ceil(cntFul / PAGE_SIZE));
 
-  const jump = (patch: Record<string, any>) => {
+  const jump = (patch: Record<string, string | number>) => {
     router.push({ pathname: '/needs/mine', query: { un: pageUn, ful: pageFul, ...patch } });
   };
 

@@ -1,7 +1,6 @@
 // components/NeedList.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useSupabaseClient, useUser } from "@supabase/auth-helpers-react";
-import NeedCard from "@/components/NeedCard";
 
 type Scope = "all" | "mine" | "accepted";
 
@@ -135,7 +134,7 @@ export default function NeedList({ scope = "all", pageSize = 6 }: Props) {
         <select
           value={time}
           onChange={(e) => {
-            setTime(e.target.value as any);
+            setTime(e.target.value as typeof time);
             setPage(1);
           }}
           className="rounded-xl px-3 py-2 bg-white/90 text-neutral-900 ring-1 ring-black/10"
@@ -147,7 +146,7 @@ export default function NeedList({ scope = "all", pageSize = 6 }: Props) {
         <select
           value={sort}
           onChange={(e) => {
-            setSort(e.target.value as any);
+            setSort(e.target.value as "newest" | "oldest");
             setPage(1);
           }}
           className="rounded-xl px-3 py-2 bg-white/90 text-neutral-900 ring-1 ring-black/10"

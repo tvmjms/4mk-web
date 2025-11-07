@@ -1,4 +1,5 @@
 import Head from "next/head";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { useSupabaseClient, useUser } from "@supabase/auth-helpers-react";
@@ -40,8 +41,8 @@ export default function CreateNeedPage() {
       });
       if (error) throw error;
       router.replace("/dashboard");
-    } catch (e: any) {
-      setMsg(e?.message ?? "Failed to create need");
+    } catch (e: unknown) {
+      setMsg((e as Error)?.message ?? "Failed to create need");
     } finally {
       setSaving(false);
     }
@@ -54,7 +55,7 @@ export default function CreateNeedPage() {
         <div className="mx-auto max-w-3xl rounded-[28px] bg-gradient-to-b from-pink-200 to-pink-300 p-6 md:p-10 shadow-[0_22px_70px_rgba(0,0,0,0.45)] ring-2 ring-[#E3B341]">
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-extrabold text-neutral-900">Create Need</h1>
-            <a href="/" className="text-sm underline text-neutral-800">← Back to Home</a>
+            <Link href="/" className="text-sm underline text-neutral-800">← Back to Home</Link>
           </div>
 
           <div className="mt-6 grid grid-cols-1 gap-3">
@@ -99,9 +100,9 @@ export default function CreateNeedPage() {
               >
                 {saving ? "Saving…" : "Create Need"}
               </button>
-              <a href="/" className="rounded-full bg-neutral-900 text-white px-5 py-2 shadow hover:opacity-90">
+              <Link href="/" className="rounded-full bg-neutral-900 text-white px-5 py-2 shadow hover:opacity-90">
                 Cancel
-              </a>
+              </Link>
             </div>
 
             {msg && <div className="text-sm text-red-700">{msg}</div>}

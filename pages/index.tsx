@@ -1,6 +1,7 @@
 // pages/index.tsx
 import Head from "next/head";
 import Image from "next/image";
+import Link from "next/link";
 import NeedList from "@/components/NeedList";
 import SidebarNotes from "@/components/SidebarNotes";
 
@@ -24,9 +25,9 @@ export default function HomePage() {
                 Find needs in your community or post one of your own.
               </p>
               <div className="mt-4 flex flex-wrap gap-3">
-                <a href="/needs" className="rounded-full bg-[#5b8762] text-white px-5 py-2 shadow hover:opacity-90">View All Needs</a>
-                <a href="/dashboard" className="rounded-full bg-[#5b8762] text-white px-5 py-2 shadow hover:opacity-90">My Dashboard</a>
-                <a href="/needs/create" className="rounded-full bg-[#5b8762] text-white px-5 py-2 shadow hover:opacity-90">Create Need</a>
+                <Link href="/needs" className="rounded-full bg-[#5b8762] text-white px-5 py-2 shadow hover:opacity-90">View All Needs</Link>
+                <Link href="/dashboard" className="rounded-full bg-[#5b8762] text-white px-5 py-2 shadow hover:opacity-90">My Dashboard</Link>
+                <Link href="/needs/create" className="rounded-full bg-[#5b8762] text-white px-5 py-2 shadow hover:opacity-90">Create Need</Link>
               </div>
             </div>
 

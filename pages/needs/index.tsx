@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createPagesBrowserClient } from "@supabase/auth-helpers-nextjs";
 import type { Database } from "@/types/supabase";
-import NeedFilters, { Range } from "@/components/NeedFilters";
+import NeedFilters, { Filters } from "@/components/NeedFilters";
 
 type Need = Database["public"]["Tables"]["needs"]["Row"];
 type Fulfillment = Database["public"]["Tables"]["fulfillment"]["Row"];
@@ -12,11 +12,7 @@ type Fulfillment = Database["public"]["Tables"]["fulfillment"]["Row"];
 export default function AllNeedsPage() {
   const supabase = createPagesBrowserClient<Database>();
 
-  // 🔧 NEW: keyword state for <NeedFilters>
-  const [q, setQ] = useState("");
-
-  // keep your time filter
-  const [range, setRange] = useState<Range>("all");
+  const [filters, setFilters] = useState<Filters>({ q: "", timeframe: "all", sort: "newest" });
 
   const [needs, setNeeds] = useState<Need[]>([]);
   const [fulfills, setFulfills] = useState<Fulfillment[]>([]);
@@ -51,18 +47,18 @@ export default function AllNeedsPage() {
   };
 
   const passesTime = (n: Need) => {
-    if (range === "all") return true;
+    if (filters.timeframe === "all") return true;
     const created = n.created_at ? new Date(n.created_at) : null;
     if (!created) return false;
     const days = (Date.now() - created.getTime()) / (1000 * 60 * 60 * 24);
-    if (range === "day") return days <= 1;
-    if (range === "week") return days <= 7;
-    if (range === "month") return days <= 30;
+    if (filters.timeframe === "24h") return days <= 1;
+    if (filters.timeframe === "7d") return days <= 7;
+    if (filters.timeframe === "30d") return days <= 30;
     return true;
   };
 
   const passesKeyword = (n: Need) => {
-    const needle = q.trim().toLowerCase();
+    const needle = filters.q.trim().toLowerCase();
     if (!needle) return true;
     const hay = [
       n.title,
@@ -89,11 +85,8 @@ export default function AllNeedsPage() {
 
         {/* ✅ Unified filters */}
         <NeedFilters
-          q={q}
-          onQ={setQ}
-          range={range}
-          onRange={setRange}
-          className="mb-6"
+          onChange={setFilters}
+          initial={filters}
         />
 
         {loading && <p>Loading…</p>}

@@ -1,0 +1,1 @@
+(self.webpackChunk_N_E=self.webpackChunk_N_E||[]).push([[817],{6772:(n,e,u)=>{"use strict";u.r(e),u.d(e,{default:()=>r});var _=u(4232);function r(){return(0,_.useEffect)(()=>{window.location.replace("/dashboard")},[]),null}},9737:(n,e,u)=>{(window.__NEXT_P=window.__NEXT_P||[]).push(["/mine",function(){return u(6772)}])}},n=>{n.O(0,[636,593,792],()=>n(n.s=9737)),_N_E=n.O()}]);

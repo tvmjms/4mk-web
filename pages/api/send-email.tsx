@@ -1,6 +1,6 @@
 // pages/api/send-email.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { sendMail } from '@/lib/mailer';
+import { sendEmail } from '@/lib/mailer';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -14,11 +14,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Missing fields' });
     }
 
-    await sendMail(to, subject, messageHtml);
+    await sendEmail({ to, subject, text: messageHtml });
 
     res.status(200).json({ ok: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Email send failed:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: (error as Error).message });
   }
 }

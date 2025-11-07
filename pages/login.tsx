@@ -1,4 +1,5 @@
 import Head from "next/head";
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { useSupabaseClient } from "@supabase/auth-helpers-react";
@@ -78,7 +79,7 @@ export default function LoginPage() {
               </button>
             </div>
             {msg && <div className="text-sm text-red-700">{msg}</div>}
-            <a href="/forgot" className="text-sm text-blue-700 underline">Forgot password?</a>
+            <Link href="/forgot" className="text-sm text-blue-700 underline">Forgot password?</Link>
           </div>
         </div>
       </div>

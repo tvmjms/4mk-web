@@ -18,7 +18,7 @@ export default function NeedFilters({
   const [timeframe, setTimeframe] = useState<Filters['timeframe']>(initial?.timeframe ?? 'all');
   const [sort, setSort] = useState<Filters['sort']>(initial?.sort ?? 'newest');
 
-  useEffect(() => { onChange({ q, timeframe, sort }); }, [q, timeframe, sort]);
+  useEffect(() => { onChange({ q, timeframe, sort }); }, [q, timeframe, sort, onChange]);
 
   return (
     <div className="flex flex-wrap gap-3 items-center">

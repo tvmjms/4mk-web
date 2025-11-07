@@ -1,4 +1,5 @@
 import Head from "next/head";
+import Link from "next/link";
 import { useUser, useSupabaseClient } from "@supabase/auth-helpers-react";
 import { useEffect, useState } from "react";
 
@@ -43,21 +44,21 @@ export default function DashboardPage() {
 
         let acceptedNeeds: Need[] = [];
         if (f && f.length) {
-          const ids = [...new Set(f.map((x: any) => x.need_id))];
+          const ids = [...new Set(f.map((x: { need_id: number }) => x.need_id))];
           const { data: needsRows, error: e3 } = await supabase
             .from("needs")
             .select("*")
             .in("id", ids);
           if (e3) throw e3;
-          acceptedNeeds = (needsRows || []) as any;
+          acceptedNeeds = (needsRows || []) as Need[];
         }
 
         if (!ignore) {
-          setMine((myNeeds || []) as any);
+          setMine((myNeeds || []) as Need[]);
           setAccepted(acceptedNeeds);
         }
-      } catch (e: any) {
-        if (!ignore) setErr(e?.message ?? "Failed to load dashboard");
+      } catch (e: unknown) {
+        if (!ignore) setErr((e as Error)?.message ?? "Failed to load dashboard");
       } finally {
         if (!ignore) setLoading(false);
       }
@@ -72,7 +73,7 @@ export default function DashboardPage() {
         <div className="mx-auto max-w-6xl rounded-[28px] bg-gradient-to-b from-pink-200 to-pink-300 p-6 md:p-10 shadow-[0_22px_70px_rgba(0,0,0,0.45)] ring-2 ring-[#E3B341]">
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-extrabold text-neutral-900">My Dashboard</h1>
-            <a href="/" className="text-sm underline text-neutral-800">← Back to Home</a>
+            <Link href="/" className="text-sm underline text-neutral-800">← Back to Home</Link>
           </div>
 
           {loading && <div className="mt-6 text-neutral-800">Loading…</div>}
