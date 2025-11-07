@@ -89,6 +89,7 @@ export default function NewNeedPage() {
   const [lastSubmissionTime, setLastSubmissionTime] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedFormData, setSubmittedFormData] = useState<string | null>(null);
+  const [submissionId, setSubmissionId] = useState<string | null>(null);
 
   useEffect(() => {
     // Clear any daily limit restrictions from browser storage (only once)
@@ -111,11 +112,20 @@ export default function NewNeedPage() {
     }
 
     const now = Date.now();
-    if (now - lastSubmissionTime < 2000) { // Reduced to 2 seconds (more user-friendly)
+    if (now - lastSubmissionTime < 3000) { // Increased to 3 seconds for better protection
       console.log('Form submission blocked - too soon after last submission');
       setErr("Please wait a moment before submitting again.");
       return;
     }
+
+    // Generate unique submission ID to track this specific submission
+    const currentSubmissionId = `${user?.id || 'unknown'}-${now}-${Math.random().toString(36).substr(2, 9)}`;
+    if (submissionId === currentSubmissionId) {
+      console.log('Form submission blocked - duplicate submission ID');
+      setErr("This submission is already being processed.");
+      return;
+    }
+    setSubmissionId(currentSubmissionId);
 
     // Check for identical form data
     const currentFormData = JSON.stringify({
@@ -209,6 +219,20 @@ export default function NewNeedPage() {
 
       if (!response.ok) {
         console.error('API route error:', result);
+        
+        // Handle duplicate detection specifically
+        if (result.code === 'DUPLICATE_NEED' && result.existingNeedId) {
+          setErr(`This need appears to already exist. A very similar need was created recently. Would you like to view it instead?`);
+          // Reset submission tracking on duplicate
+          setSubmissionId(null);
+          setSubmittedFormData(null);
+          // Could redirect to the existing need: router.push(`/needs/${result.existingNeedId}`);
+          return;
+        }
+        
+        // Reset submission tracking on other errors
+        setSubmissionId(null);
+        setSubmittedFormData(null);
         setErr(`Database error: ${result.error || 'Unknown error'}`);
         return;
       }
@@ -222,6 +246,9 @@ export default function NewNeedPage() {
     } catch (fetchError) {
       setSaving(false);
       setIsSubmitting(false);
+      // Reset submission tracking on network error
+      setSubmissionId(null);
+      setSubmittedFormData(null);
       console.error('Fetch error:', fetchError);
       setErr(`Network error: ${fetchError}`);
       return;

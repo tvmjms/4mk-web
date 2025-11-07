@@ -41,15 +41,44 @@ async function handleCreateNeed(req: NextApiRequest, res: NextApiResponse) {
 
     // First, let's try to count existing needs for this user today
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    // Check for recent identical needs (within last 5 minutes)
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    
     const { data: existingNeeds, error: countError } = await supabase
       .from('needs')
-      .select('id, created_at')
+      .select('id, title, description, created_at')
       .eq('owner_id', owner_id)
-      .gte('created_at', `${today}T00:00:00.000Z`)
-      .lt('created_at', `${today}T23:59:59.999Z`);
+      .eq('title', title.trim())
+      .gte('created_at', fiveMinutesAgo);
 
-    logger.debug('API route - Existing needs today:', existingNeeds ? existingNeeds.length : 0);
-    logger.debug('API route - Count error:', countError);
+    if (countError) {
+      logger.error('API route - Error checking existing needs:', countError);
+    }
+
+    // Check for exact duplicate (same title, same user, within 5 minutes)
+    if (existingNeeds && existingNeeds.length > 0) {
+      const exactMatch = existingNeeds.find(need => 
+        need.title.trim().toLowerCase() === title.trim().toLowerCase() &&
+        (description ? need.description?.trim().toLowerCase() === description.trim().toLowerCase() : !need.description)
+      );
+      
+      if (exactMatch) {
+        logger.warn('API route - Duplicate need detected:', {
+          owner_id,
+          title,
+          existing_id: exactMatch.id,
+          existing_created: exactMatch.created_at
+        });
+        
+        return res.status(409).json({ 
+          error: 'Duplicate need detected. A very similar need was created recently.',
+          existingNeedId: exactMatch.id,
+          code: 'DUPLICATE_NEED'
+        });
+      }
+    }
+
+    logger.debug('API route - Creating new need - no duplicates found');
 
     const { data, error } = await supabase
       .from('needs')
