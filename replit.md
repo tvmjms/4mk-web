@@ -96,18 +96,28 @@ The platform uses **OpenAI's free Moderation API** to ensure community safety an
 ### Features
 - ✅ **Real-time checking**: Content is checked as users type (500ms debounce)
 - ✅ **Visual feedback**: Blue "checking" indicator while moderating, red alert for violations
+- ✅ **Form-level locking**: When inappropriate content is detected, the ENTIRE form locks - only the violating field remains editable
 - ✅ **Independent field moderation**: Title and Description are checked separately without cross-cancellation
 - ✅ **Stale response prevention**: Request ID tracking ensures old API responses don't override newer clean states
-- ✅ **Submission blocking**: Form submission is prevented if any field has moderation errors
+- ✅ **Submission blocking**: Form submission is prevented if any field has moderation errors or checks are in progress
 - ✅ **Fail-open design**: If moderation service is down, users can still submit (prioritizes availability)
 
 ### How it works
-1. User types in Title or Description field
-2. After 500ms of no typing, content is sent to `/api/moderate-text`
-3. API calls OpenAI Moderation API to check for violations
-4. If flagged: Red alert shows specific violation categories
-5. If clean: No error, user can continue
-6. On submit: Form checks both fields and blocks submission if either has violations
+1. **Text Moderation**:
+   - User types in Title or Description field
+   - After 500ms of no typing, content is sent to `/api/moderate-text`
+   - API calls OpenAI Moderation API to check for violations
+   - If flagged: Red alert shows specific violation categories + entire form locks
+   - If clean: No error, user can continue
+   - On submit: Form checks both fields and blocks submission if either has violations
+
+2. **Image Moderation**:
+   - User selects an image to upload
+   - Image is compressed (max 800px, 500KB)
+   - Compressed image is sent to `/api/moderate-image` for checking
+   - API calls OpenAI Moderation API (vision) to analyze the image
+   - If flagged: Upload is rejected with clear error message showing violation categories
+   - If clean: Image is uploaded to Supabase Storage
 
 ### Moderation Categories
 The system checks for:
@@ -117,8 +127,9 @@ The system checks for:
 
 ### Files
 - `lib/contentModerator.ts` - Core moderation logic using OpenAI
-- `pages/api/moderate-text.ts` - API endpoint for real-time moderation
-- `pages/needs/create.tsx` - UI integration with debouncing and error handling
+- `pages/api/moderate-text.ts` - API endpoint for real-time text moderation
+- `pages/api/moderate-image.ts` - API endpoint for image moderation
+- `pages/needs/create.tsx` - UI integration with debouncing, form locking, and error handling
 
 ### Testing
 To test the moderation:
