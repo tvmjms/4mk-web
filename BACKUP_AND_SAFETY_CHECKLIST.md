@@ -38,14 +38,41 @@
 - Create a new private repository
 - Follow steps above
 
-### Option 2: Manual Backup (Quick Solution)
+### Option 2: Google Drive Backup (RECOMMENDED - Easy & Automatic)
+
+**Automated Google Drive Backup:**
+
+1. **Run the backup script:**
+   ```powershell
+   .\backup-to-googledrive.ps1
+   ```
+   This will:
+   - Create a backup folder in your Google Drive
+   - Copy the entire project with all Git history
+   - Automatically sync to cloud
+   - Verify the backup was successful
+
+2. **Manual Google Drive Backup:**
+   - Navigate to: `C:\Users\smmtv\Google Drive\` (or your Google Drive location)
+   - Create folder: `4mk-backups`
+   - Copy entire project folder there
+   - Google Drive will automatically sync to cloud
+
+**Benefits:**
+- ✅ Automatic cloud sync
+- ✅ Access from any device
+- ✅ Version history (if enabled)
+- ✅ Free storage (15GB+)
+- ✅ Easy to restore
+
+### Option 3: Manual Backup (Quick Solution)
 
 **Create a backup copy right now:**
 
 1. **Copy entire folder to another location:**
    - Current location: `C:\Users\smmtv\Downloads\4mk-code-fromreplit`
    - Backup to: `C:\Users\smmtv\Documents\4mk-code-backup-2025-11-08` (or external drive/USB)
-   - Or use cloud storage: OneDrive, Google Drive, Dropbox
+   - Or use other cloud storage: OneDrive, Dropbox
 
 2. **Verify backup:**
    - Check that all files are copied
@@ -59,9 +86,9 @@ Before closing your computer, verify:
 
 - [ ] All files saved (✅ Already done - working tree clean)
 - [ ] All changes committed to Git (✅ Already done)
-- [ ] Backup created (⚠️ **ACTION REQUIRED**)
+- [ ] **Google Drive backup created** (⚠️ **ACTION REQUIRED** - Run `.\backup-to-googledrive.ps1`)
 - [ ] Remote repository configured (⚠️ **RECOMMENDED**)
-- [ ] Environment variables documented (see below)
+- [ ] Environment variables backed up separately (see below)
 
 ---
 
@@ -134,6 +161,12 @@ git commit -m "Brief description of what changed"
 ---
 
 ## 📦 Quick Backup Commands
+
+### Google Drive Backup (Easiest)
+```powershell
+# Run the automated backup script
+.\backup-to-googledrive.ps1
+```
 
 ### Create Local Backup
 ```powershell
@@ -248,10 +281,11 @@ git push --dry-run  # Test push without actually pushing
 
 ## 📌 Action Items for Today
 
-- [ ] **IMMEDIATE:** Create a backup copy of the entire project folder
+- [ ] **IMMEDIATE:** Run `.\backup-to-googledrive.ps1` to backup to Google Drive
+- [ ] **IMMEDIATE:** Create a backup copy of the entire project folder (local backup)
 - [ ] **RECOMMENDED:** Set up GitHub/GitLab repository and push code
 - [ ] **IMPORTANT:** Backup `.env.local` file to secure location
-- [ ] **VERIFY:** Run `git status` to confirm everything is committed
+- [ ] **VERIFY:** Run `.\verify-backup.ps1` to confirm everything is safe
 - [ ] **DOCUMENT:** Save this checklist for future reference
 
 ---
@@ -260,8 +294,8 @@ git push --dry-run  # Test push without actually pushing
 
 Create backups in multiple locations for safety:
 
+- [ ] **Google Drive backup** (Run `.\backup-to-googledrive.ps1`) ⭐ RECOMMENDED
 - [ ] Local backup (different drive/folder)
-- [ ] Cloud storage (OneDrive, Google Drive, Dropbox)
 - [ ] External USB drive
 - [ ] Remote Git repository (GitHub/GitLab)
 - [ ] `.env.local` backed up separately (secure location)
