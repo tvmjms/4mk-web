@@ -8,15 +8,24 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
-  const [checking, setChecking] = useState(true) // Add checking state
+  const [checking, setChecking] = useState(false) // Start with false - show form immediately
   const router = useRouter()
 
   // Get the redirect destination from URL params
   const redirectTo = router.query.next as string || '/'
 
   useEffect(() => {
-    // If already logged in, redirect to intended destination
+    // Only check session if we weren't redirected here by auth guard
+    // If there's a 'next' param, we already know user isn't logged in
+    if (router.query.next) {
+      console.log('Login page: Redirected by auth guard, showing form immediately')
+      setChecking(false)
+      return
+    }
+
+    // Otherwise, check if user is already logged in
     const checkUser = async () => {
+      setChecking(true)
       try {
         const { data: { session } } = await supabase.auth.getSession()
         if (session) {
@@ -24,20 +33,20 @@ export default function Login() {
           console.log('Login page: User already logged in, redirecting to:', destination)
           router.replace(destination)
         } else {
-          console.log('Login page: No session found, staying on login page')
-          setChecking(false) // Done checking, show login form
+          console.log('Login page: No session found, showing login form')
+          setChecking(false)
         }
       } catch (error) {
         console.error('Login page: Error checking session:', error)
-        setChecking(false) // Show login form even if there's an error
+        setChecking(false)
       }
     }
     
-    // Only run after router is ready to avoid issues with router.query
+    // Only run after router is ready
     if (router.isReady) {
       checkUser()
     }
-  }, [router.isReady, router.query.next]) // Wait for router to be ready
+  }, [router.isReady, router.query.next])
 
   const handleLogin = async () => {
     setLoading(true)
