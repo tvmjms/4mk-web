@@ -4,6 +4,7 @@
   "/_document": "pages/_document.js",
   "/": "pages/index.js",
   "/login": "pages/login.js",
-  "/needs/create": "pages/needs/create.js",
-  "/api/create-need-direct": "pages/api/create-need-direct.js"
+  "/api/send-sms": "pages/api/send-sms.js",
+  "/dashboard": "pages/dashboard.js",
+  "/needs/create": "pages/needs/create.js"
 }
