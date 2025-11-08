@@ -4,7 +4,6 @@
   "/_document": "pages/_document.js",
   "/": "pages/index.js",
   "/login": "pages/login.js",
-  "/api/upload-image": "pages/api/upload-image.js",
   "/needs/create": "pages/needs/create.js",
-  "/api/create-need-direct": "pages/api/create-need-direct.js"
+  "/needs/[id]/edit": "pages/needs/[id]/edit.js"
 }
