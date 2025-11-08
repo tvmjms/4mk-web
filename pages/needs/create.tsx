@@ -229,6 +229,12 @@ export default function NewNeedPage() {
       return;
     }
     
+    // Check if moderation is still in progress (prevent race condition)
+    if (isModeratingTitle || isModeratingDescription) {
+      setErr("Please wait for content safety check to complete.");
+      return;
+    }
+    
     // Check for moderation errors in any field
     if (titleModerationError || descriptionModerationError) {
       setErr("Please fix the content safety issues before submitting.");
@@ -923,11 +929,11 @@ export default function NewNeedPage() {
               <button
                 type="submit"
                 className={`w-full py-1.5 rounded-md text-center font-semibold text-xs mb-3 transition-all ${
-                  saving || isSubmitting
+                  saving || isSubmitting || isModeratingTitle || isModeratingDescription || !!titleModerationError || !!descriptionModerationError
                     ? "bg-gray-400 cursor-not-allowed animate-pulse" 
                     : "btn-turquoise hover:opacity-90"
                 }`}
-                disabled={saving || isSubmitting}
+                disabled={saving || isSubmitting || isModeratingTitle || isModeratingDescription || !!titleModerationError || !!descriptionModerationError}
                 onClick={(e) => {
                   // 🔍 DEBUG: Track button clicks specifically
                   console.log('🖱️ BUTTON CLICK DETECTED:', {
@@ -945,7 +951,13 @@ export default function NewNeedPage() {
                   // Don't prevent default - let form submission handle it
                 }}
               >
-                {saving || isSubmitting ? "Creating… Please wait (do not click again)" : "Create Need"}
+                {saving || isSubmitting 
+                  ? "Creating… Please wait (do not click again)"
+                  : (isModeratingTitle || isModeratingDescription)
+                  ? "🔍 Checking Content Safety..."
+                  : (titleModerationError || descriptionModerationError)
+                  ? "⚠️ Fix Content Issues Above"
+                  : "Create Need"}
               </button>
 
               {/* Confirmation Message */}
