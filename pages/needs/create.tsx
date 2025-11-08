@@ -583,7 +583,7 @@ export default function NewNeedPage() {
       const compressedFile = await imageCompression(file, options);
       console.log('Compressed image:', { compressedSize: (compressedFile.size / 1024).toFixed(2) + 'KB' });
       
-      // Convert file to base64 for API upload
+      // Convert file to base64 for API upload and moderation
       const reader = new FileReader();
       const base64Promise = new Promise<string>((resolve, reject) => {
         reader.onload = () => resolve(reader.result as string);
@@ -592,6 +592,29 @@ export default function NewNeedPage() {
       });
       
       const fileData = await base64Promise;
+      
+      // 🛡️ MODERATE IMAGE before uploading (FREE OpenAI Moderation API)
+      console.log('Moderating image for inappropriate content...');
+      const moderationResponse = await fetch('/api/moderate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageData: fileData })
+      });
+      
+      const moderationResult = await moderationResponse.json();
+      
+      if (moderationResult.flagged) {
+        // Image contains inappropriate content - show error and abort upload
+        const categories = moderationResult.flaggedCategories?.join(', ') || 'inappropriate content';
+        setErr(`⚠️ Image Rejected: This image contains ${categories}. Please select a different image.`);
+        setUploadingImage(false);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        return;
+      }
+      
+      console.log('Image moderation passed - safe to upload');
       
       // Upload via API route (bypasses RLS using service role key)
       const response = await fetch('/api/upload-image', {
@@ -682,6 +705,22 @@ export default function NewNeedPage() {
             {/* Left Card - Need Information */}
             <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-lg border border-white/20 p-4">
               
+              {/* Form Lock Alert - Shows when any field has moderation error */}
+              {(titleModerationError || descriptionModerationError) && (
+                <div className="mb-3 p-3 bg-red-100 border-2 border-red-400 rounded-lg">
+                  <div className="flex items-start">
+                    <div className="text-red-600 text-xl mr-2">🔒</div>
+                    <div className="flex-1">
+                      <h4 className="text-sm font-bold text-red-800 mb-1">Form Locked - Content Safety Issue</h4>
+                      <p className="text-xs text-red-700">
+                        {titleModerationError && "Fix the issue in the Title field to unlock the form."}
+                        {descriptionModerationError && !titleModerationError && "Fix the issue in the Description field to unlock the form."}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Title */}
               <div className="mb-2">
                 <label className="block font-medium text-slate-700 mb-0.5 text-xs">Title *</label>
@@ -691,6 +730,7 @@ export default function NewNeedPage() {
                   className="w-full px-2 py-0.5 rounded border border-slate-300 text-xs focus:border-turquoise-400 focus:ring-1 focus:ring-turquoise-400"
                   required
                   disabled={isSubmitting}
+                  readOnly={descriptionModerationError ? true : false}
                   placeholder="What do you need help with?"
                 />
                 {/* Title moderation status */}
@@ -713,7 +753,7 @@ export default function NewNeedPage() {
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   className="w-full px-2 py-0.5 rounded border border-slate-300 text-xs focus:border-turquoise-400 focus:ring-1 focus:ring-turquoise-400"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !!titleModerationError || !!descriptionModerationError}
                 >
                   <option value="food">Food</option>
                   <option value="transportation">Transportation</option>
@@ -734,6 +774,7 @@ export default function NewNeedPage() {
                   className="w-full px-2 py-0.5 rounded border border-slate-300 text-xs focus:border-turquoise-400 focus:ring-1 focus:ring-turquoise-400"
                   rows={2}
                   disabled={isSubmitting}
+                  readOnly={titleModerationError ? true : false}
                   placeholder="Provide more details about your need..."
                 />
                 {/* Description moderation status */}
@@ -760,7 +801,7 @@ export default function NewNeedPage() {
                       onChange={(e) => setStreet(e.target.value)}
                       className="w-full px-1 py-0.5 rounded border border-slate-300 text-xs focus:border-turquoise-400"
                       placeholder="Street address"
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || !!titleModerationError || !!descriptionModerationError}
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
@@ -770,7 +811,7 @@ export default function NewNeedPage() {
                         value={state}
                         onChange={(e) => handleStateChange(e.target.value)}
                         className="w-full px-1 py-0.5 rounded border border-slate-300 text-xs focus:border-turquoise-400"
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || !!titleModerationError || !!descriptionModerationError}
                       >
                         <option value="">Select State</option>
                         {Object.keys(usStatesAndCities).map((stateCode) => (
@@ -786,7 +827,7 @@ export default function NewNeedPage() {
                         value={city}
                         onChange={(e) => setCity(e.target.value)}
                         className="w-full px-1 py-0.5 rounded border border-slate-300 text-xs focus:border-turquoise-400"
-                        disabled={!state || isSubmitting}
+                        disabled={!state || isSubmitting || !!titleModerationError || !!descriptionModerationError}
                       >
                         <option value="">
                           {state ? "Select City" : "Select State First"}
@@ -806,7 +847,7 @@ export default function NewNeedPage() {
                       onChange={(e) => setZipCode(e.target.value)}
                       className="w-full px-1 py-0.5 rounded border border-slate-300 text-xs focus:border-turquoise-400"
                       placeholder="Zip code"
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || !!titleModerationError || !!descriptionModerationError}
                     />
                   </div>
                 </div>
@@ -822,7 +863,7 @@ export default function NewNeedPage() {
                     accept="image/*"
                     onChange={handleImageSelect}
                     className="hidden"
-                    disabled={isSubmitting || uploadingImage}
+                    disabled={isSubmitting || uploadingImage || !!titleModerationError || !!descriptionModerationError}
                   />
                   
                   {/* Upload Button */}
@@ -830,10 +871,10 @@ export default function NewNeedPage() {
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      disabled={isSubmitting || uploadingImage}
+                      disabled={isSubmitting || uploadingImage || !!titleModerationError || !!descriptionModerationError}
                       className="w-full px-2 py-1.5 rounded border-2 border-dashed border-slate-300 text-xs font-medium text-slate-600 hover:border-turquoise-400 hover:text-turquoise-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
-                      {uploadingImage ? '⏳ Compressing...' : '📷 Add Photo'}
+                      {uploadingImage ? '⏳ Processing & Checking...' : '📷 Add Photo'}
                     </button>
                   )}
                   
@@ -882,7 +923,7 @@ export default function NewNeedPage() {
                     onChange={(e) => setContactEmail(e.target.value)}
                     className="w-full px-2 py-0.5 rounded border border-slate-300 text-xs focus:border-turquoise-400"
                     placeholder="Email address"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || !!titleModerationError || !!descriptionModerationError}
                   />
                   <div className="relative">
                     <input
@@ -892,7 +933,7 @@ export default function NewNeedPage() {
                       placeholder="Phone number (will auto-format)"
                       title="Enter 10-digit phone number - will format automatically as you type"
                       maxLength={12}
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || !!titleModerationError || !!descriptionModerationError}
                     />
                     {contactPhone && (
                       <span className="absolute right-1 top-0.5 text-xs">
@@ -905,7 +946,7 @@ export default function NewNeedPage() {
                     onChange={(e) => setWhatsappId(e.target.value)}
                     className="w-full px-2 py-0.5 rounded border border-slate-300 text-xs focus:border-turquoise-400"
                     placeholder="WhatsApp ID"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || !!titleModerationError || !!descriptionModerationError}
                   />
                 </div>
               </fieldset>
@@ -917,6 +958,7 @@ export default function NewNeedPage() {
                   value={preferredContact}
                   onChange={(e) => setPreferredContact(e.target.value)}
                   className="w-full px-2 py-0.5 rounded border border-slate-300 text-xs focus:border-turquoise-400"
+                  disabled={!!titleModerationError || !!descriptionModerationError}
                 >
                   <option value="">Select preferred method</option>
                   <option value="email">Email</option>
