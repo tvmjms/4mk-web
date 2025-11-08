@@ -276,6 +276,19 @@ class ContentModerator {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('OpenAI Moderation API error:', response.status, errorText);
+        
+        // Fail-open: If rate limited (429) or service error (5xx), allow content through
+        if (response.status === 429 || response.status >= 500) {
+          console.warn('⚠️ Moderation temporarily unavailable (rate limit or service error) - allowing content (fail-open)');
+          return {
+            approved: true,
+            confidence: 0.0,
+            reasons: ['Moderation service temporarily unavailable - content allowed'],
+            category: 'safe',
+            suggestedAction: 'approve'
+          };
+        }
+        
         throw new Error(`OpenAI API returned ${response.status}: ${errorText}`);
       }
 
