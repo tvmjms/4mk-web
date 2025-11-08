@@ -3,7 +3,5 @@
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
   "/": "pages/index.js",
-  "/login": "pages/login.js",
-  "/api/create-need-direct": "pages/api/create-need-direct.js",
-  "/needs/create": "pages/needs/create.js"
+  "/login": "pages/login.js"
 }
