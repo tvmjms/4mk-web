@@ -1,13 +1,12 @@
-// pages/api/upload-image.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createPagesServerClient } from '@supabase/auth-helpers-nextjs';
-import formidable from 'formidable';
-import fs from 'fs';
+import { createClient } from '@supabase/supabase-js';
 
-// Disable body parser to handle multipart/form-data
+// Accept JSON with base64 images
 export const config = {
   api: {
-    bodyParser: false,
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
   },
 };
 
@@ -17,53 +16,55 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Initialize Supabase client
-    const supabase = createPagesServerClient({ req, res });
+    const { fileData, fileName, userId, contentType } = req.body;
 
-    // Check authentication
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    if (!fileData || !fileName || !userId) {
+      return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Parse the form data
-    const form = formidable({});
-    const [fields, files] = await form.parse(req);
+    // Create admin Supabase client (bypasses RLS)
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
 
-    const file = Array.isArray(files.image) ? files.image[0] : files.image;
-    if (!file) {
-      return res.status(400).json({ error: 'No image file provided' });
-    }
+    // Convert base64 to buffer
+    const base64Data = fileData.replace(/^data:image\/\w+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
 
-    // Read the file
-    const fileBuffer = fs.readFileSync(file.filepath);
-    const fileName = `${session.user.id}/${Date.now()}-${file.originalFilename || 'image.jpg'}`;
-
-    // Upload to Supabase Storage
+    // Upload to Supabase Storage using admin client (bypasses RLS)
+    const filePath = `${userId}/${Date.now()}-${fileName.replace(/\s+/g, '-')}`;
     const { data, error } = await supabase.storage
-      .from('need-images')
-      .upload(fileName, fileBuffer, {
-        contentType: file.mimetype || 'image/jpeg',
+      .from('need-attachments')
+      .upload(filePath, buffer, {
+        contentType: contentType || 'image/jpeg',
         upsert: false,
       });
 
     if (error) {
-      console.error('Supabase storage error:', error);
-      return res.status(500).json({ error: 'Failed to upload image' });
+      console.error('Upload error:', error);
+      return res.status(500).json({ error: error.message });
     }
 
     // Get public URL
     const { data: { publicUrl } } = supabase.storage
-      .from('need-images')
+      .from('need-attachments')
       .getPublicUrl(data.path);
 
-    // Clean up temp file
-    fs.unlinkSync(file.filepath);
+    return res.status(200).json({ 
+      success: true, 
+      url: publicUrl,
+      path: data.path
+    });
 
-    return res.status(200).json({ url: publicUrl });
-
-  } catch (error) {
-    console.error('Upload error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+  } catch (error: any) {
+    console.error('Image upload error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to upload image' });
   }
 }

@@ -456,37 +456,49 @@ export default function NewNeedPage() {
       const compressedFile = await imageCompression(file, options);
       console.log('Compressed image:', { compressedSize: (compressedFile.size / 1024).toFixed(2) + 'KB' });
       
-      // Upload to Supabase Storage
-      const fileName = `${user?.id}/${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
-      const { data, error } = await supabase.storage
-        .from('need-attachments')
-        .upload(fileName, compressedFile, {
-          contentType: 'image/jpeg',
-          upsert: false,
-        });
+      // Convert file to base64 for API upload
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(compressedFile);
+      });
+      
+      const fileData = await base64Promise;
+      
+      // Upload via API route (bypasses RLS using service role key)
+      const response = await fetch('/api/upload-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileData,
+          fileName: file.name,
+          userId: user?.id,
+          contentType: 'image/jpeg'
+        })
+      });
 
-      if (error) {
-        console.error('Upload error:', error);
-        throw new Error('Failed to upload image');
+      const result = await response.json();
+
+      if (!response.ok) {
+        console.error('Upload error:', result.error);
+        throw new Error(result.error || 'Failed to upload image');
       }
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('need-attachments')
-        .getPublicUrl(data.path);
+      console.log('Upload successful:', result);
       
       // Add to uploaded images array
       const newImage = {
         id: Date.now().toString(),
-        url: publicUrl,
+        url: result.url,
         file: compressedFile  // Keep for preview
       };
       
       setUploadedImages(prev => [...prev, newImage]);
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Image upload error:', error);
-      setErr('Failed to upload image. Please try again.');
+      setErr(error.message || 'Failed to upload image. Please try again.');
     } finally {
       setUploadingImage(false);
       // Reset file input
