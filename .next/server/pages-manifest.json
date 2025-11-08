@@ -2,10 +2,5 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/needs/create": "pages/needs/create.js",
-  "/needs/[id]/edit": "pages/needs/[id]/edit.js",
-  "/needs/[id]": "pages/needs/[id].js",
-  "/dashboard": "pages/dashboard.js",
-  "/": "pages/index.js",
-  "/api/create-need-direct": "pages/api/create-need-direct.js"
+  "/": "pages/index.js"
 }

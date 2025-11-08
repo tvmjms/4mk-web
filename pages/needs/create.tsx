@@ -107,6 +107,14 @@ export default function NewNeedPage() {
     showConfirmation
   });
 
+  // Auto-fill contact email with user's login email
+  useEffect(() => {
+    if (user?.email && !contactEmail) {
+      setContactEmail(user.email);
+      console.log('Auto-filled contact email with user email:', user.email);
+    }
+  }, [user?.email]);
+
   useEffect(() => {
     // Clear any daily limit restrictions from browser storage (only once)
     localStorage.removeItem('dailyLimit');
@@ -329,19 +337,22 @@ export default function NewNeedPage() {
   };
 
   const sendEmailReceipt = async () => {
-    if (!needId || !contactEmail.trim() || emailSending) return;
+    // Use contact email if provided, otherwise use user's login email
+    const emailToUse = contactEmail.trim() || user?.email;
+    
+    if (!needId || !emailToUse || emailSending) return;
     
     setEmailSending(true);
     setErr(null); // Clear any previous errors
     
     try {
-      console.log('Sending email receipt to:', contactEmail.trim());
+      console.log('Sending email receipt to:', emailToUse);
       
       const response = await fetch('/api/send-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          to: contactEmail.trim(),
+          to: emailToUse,
           subject: 'Need Created Successfully - 4MK',
           needId,
           needTitle: title,
@@ -965,11 +976,12 @@ export default function NewNeedPage() {
               <div className="bg-blue-50 p-2 rounded border">
                 <p className="text-xs font-medium text-gray-700 mb-2">Send receipt copy:</p>
                 <div className="flex gap-2">
-                  {contactEmail.trim() && (
+                  {(contactEmail.trim() || user?.email) && (
                     <button
                       onClick={sendEmailReceipt}
                       disabled={emailSending || emailSent}
                       className="flex-1 bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                      title={contactEmail.trim() ? `Send to ${contactEmail}` : `Send to ${user?.email}`}
                     >
                       {emailSending ? "Sending..." : emailSent ? "✅ Sent" : "📧 Email"}
                     </button>
