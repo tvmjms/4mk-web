@@ -34,7 +34,8 @@ async function handleCreateNeed(req: NextApiRequest, res: NextApiResponse) {
       contact_email,
       contact_phone_e164,
       whatsapp_id,
-      provider
+      provider,
+      images
     } = req.body;
 
     logger.debug('API route - Creating need with payload:', JSON.stringify(req.body, null, 2));
@@ -95,7 +96,8 @@ async function handleCreateNeed(req: NextApiRequest, res: NextApiResponse) {
         contact_phone_e164: contact_phone_e164 || null,
         whatsapp_id: whatsapp_id || null,
         provider: provider || null,
-        status: 'new'
+        status: 'new',
+        images: images && images.length > 0 ? images : null
       }])
       .select('id')
       .single();
@@ -126,6 +128,7 @@ const validationRules = [
   { field: 'description', required: false, type: 'string' as const, maxLength: 2000 },
   { field: 'contact_email', required: false, type: 'email' as const },
   { field: 'contact_phone_e164', required: false, type: 'phone' as const }
+  // Note: images array validated client-side (max 3, URL format)
 ];
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

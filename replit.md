@@ -23,10 +23,11 @@
 ## Key Features
 1. **Authentication**: Supabase-based auth with email/password and magic links
 2. **Needs Management**: Create, view, and manage community needs
-3. **Dashboard**: Personal dashboard for managing your needs
-4. **Email Notifications**: Automated emails for need updates via Gmail
-5. **Receipt System**: Track and display need fulfillment details
-6. **SMS Notifications**: Currently disabled (showing "Coming Soon"). Twilio integration available for future implementation when budget allows.
+3. **Image Uploads**: Upload up to 3 images per need with automatic compression (max 800px, 500KB for sustainability)
+4. **Dashboard**: Personal dashboard for managing your needs
+5. **Email Notifications**: Automated emails for need updates via Gmail
+6. **Receipt System**: Track and display need fulfillment details
+7. **SMS Notifications**: Currently disabled (showing "Coming Soon"). Twilio integration available for future implementation when budget allows.
 
 ## Environment Variables
 All credentials are stored in `.env.local`:
@@ -66,7 +67,31 @@ npm run dev
 - ✅ Database connected (Supabase)
 - ✅ Server running on port 5000
 - ✅ Email functionality working (Gmail integration)
+- ✅ Image upload feature implemented (client-side compression + Supabase Storage)
+- ⚠️ **Image uploads require Supabase Storage setup** - see docs/supabase-image-setup.md
 - ⏸️ SMS functionality disabled (greyed out "Coming Soon")
+
+## Image Upload Setup (Required)
+
+The image upload feature requires Supabase Storage configuration. **Follow these steps**:
+
+1. **Run Database Migration**:
+   - Open Supabase Dashboard → SQL Editor
+   - Run the migration in `supabase/migrations/add_images_column.sql`
+   - This adds the `images` column to the `needs` table
+
+2. **Create Storage Bucket**:
+   - Follow the complete guide in `docs/supabase-image-setup.md`
+   - Create bucket named `need-images`
+   - Configure bucket policies for authenticated upload/delete
+   - Enable public read access
+
+**How it works**:
+- Users can upload 1-3 images when creating a need
+- Images are automatically compressed (max 800px, ~500KB) for sustainability
+- Uploaded directly to Supabase Storage from browser (efficient)
+- URLs stored in database `needs.images` array
+- Free tier includes 1GB storage (~10,000 compressed images)
 
 ## Future Enhancements
 - **SMS Integration**: Twilio integration code exists in `/pages/api/send-sms.ts`. To enable:
@@ -74,3 +99,5 @@ npm run dev
   2. Add environment variables: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`
   3. Update send-sms.ts to use Twilio API instead of email gateways
   4. Enable SMS button in `pages/needs/create.tsx` (currently showing as "Coming Soon")
+- **Image Display**: Add image thumbnails to needs listings and dashboard
+- **Image Display in Receipts**: Show uploaded images in email/SMS receipts

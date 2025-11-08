@@ -5,6 +5,7 @@ import { useRouter } from "next/router";
 import { useSupabaseClient } from "@supabase/auth-helpers-react";
 import { usStatesAndCities } from "@/utils/usStatesAndCities";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
+import imageCompression from 'browser-image-compression';
 
 // Utility function to format date nicely
 const formatDateTime = (date: Date) => {
@@ -90,6 +91,11 @@ export default function NewNeedPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedFormData, setSubmittedFormData] = useState<string | null>(null);
   const [submissionId, setSubmissionId] = useState<string | null>(null);
+  
+  // Image upload state
+  const [uploadedImages, setUploadedImages] = useState<Array<{id: string, url: string, file: File}>>([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // 🔍 DEBUG: Track component renders to detect double-rendering
   const renderCount = useRef(0);
@@ -241,7 +247,8 @@ export default function NewNeedPage() {
       contact_phone_e164: contactPhone.trim() || null,
       whatsapp_id: whatsappId.trim() || null,
       provider: provider.trim() || null,
-      status: 'new' // Required by database constraint
+      status: 'new', // Required by database constraint
+      images: uploadedImages.map(img => img.url) // Image URLs from Supabase Storage
     };
 
     // Try using API route to bypass any client-side issues
@@ -288,6 +295,9 @@ export default function NewNeedPage() {
       
       // Reset form data hash after successful submission
       setSubmittedFormData(null);
+      
+      // Clear uploaded images after successful submission
+      setUploadedImages([]);
     } catch (fetchError) {
       setSaving(false);
       setIsSubmitting(false);
@@ -413,6 +423,97 @@ export default function NewNeedPage() {
       // Always reset sending state
       setSmsSending(false);
     }
+  };
+
+  const supabase = useSupabaseClient();
+
+  // Image upload handler with compression
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    setUploadingImage(true);
+    
+    try {
+      const file = files[0];
+      
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setErr('Please select an image file');
+        setUploadingImage(false);
+        return;
+      }
+      
+      // Compress image for sustainability - max 800px width, 80% quality
+      const options = {
+        maxSizeMB: 0.5,          // max 500KB
+        maxWidthOrHeight: 800,    // max 800px
+        useWebWorker: true,
+        fileType: 'image/jpeg'   // convert to JPEG for better compression
+      };
+      
+      console.log('Compressing image...', { originalSize: (file.size / 1024).toFixed(2) + 'KB' });
+      const compressedFile = await imageCompression(file, options);
+      console.log('Compressed image:', { compressedSize: (compressedFile.size / 1024).toFixed(2) + 'KB' });
+      
+      // Upload to Supabase Storage
+      const fileName = `${user?.id}/${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
+      const { data, error } = await supabase.storage
+        .from('need-images')
+        .upload(fileName, compressedFile, {
+          contentType: 'image/jpeg',
+          upsert: false,
+        });
+
+      if (error) {
+        console.error('Upload error:', error);
+        throw new Error('Failed to upload image');
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('need-images')
+        .getPublicUrl(data.path);
+      
+      // Add to uploaded images array
+      const newImage = {
+        id: Date.now().toString(),
+        url: publicUrl,
+        file: compressedFile  // Keep for preview
+      };
+      
+      setUploadedImages(prev => [...prev, newImage]);
+      
+    } catch (error) {
+      console.error('Image upload error:', error);
+      setErr('Failed to upload image. Please try again.');
+    } finally {
+      setUploadingImage(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  // Remove uploaded image
+  const removeImage = async (imageId: string) => {
+    const image = uploadedImages.find(img => img.id === imageId);
+    if (!image) return;
+
+    try {
+      // Extract file path from public URL
+      const url = new URL(image.url);
+      const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/need-images\/(.+)/);
+      if (pathMatch && pathMatch[1]) {
+        const filePath = pathMatch[1];
+        await supabase.storage.from('need-images').remove([filePath]);
+      }
+    } catch (error) {
+      console.error('Error deleting image from storage:', error);
+    }
+
+    setUploadedImages(prev => prev.filter(img => img.id !== imageId));
   };
 
   // Show loading while auth is initializing
@@ -547,6 +648,62 @@ export default function NewNeedPage() {
                       disabled={isSubmitting}
                     />
                   </div>
+                </div>
+              </fieldset>
+
+              {/* Image Upload Section */}
+              <fieldset className="border border-slate-200 p-2 rounded mt-3">
+                <legend className="font-medium text-slate-700 px-1 text-xs">Photos (Optional)</legend>
+                <div className="mt-1">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageSelect}
+                    className="hidden"
+                    disabled={isSubmitting || uploadingImage}
+                  />
+                  
+                  {/* Upload Button */}
+                  {uploadedImages.length < 3 && (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isSubmitting || uploadingImage}
+                      className="w-full px-2 py-1.5 rounded border-2 border-dashed border-slate-300 text-xs font-medium text-slate-600 hover:border-turquoise-400 hover:text-turquoise-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {uploadingImage ? '⏳ Compressing...' : '📷 Add Photo'}
+                    </button>
+                  )}
+                  
+                  {/* Image Thumbnails */}
+                  {uploadedImages.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2 mt-2">
+                      {uploadedImages.map((image) => (
+                        <div key={image.id} className="relative group">
+                          <img
+                            src={image.url}
+                            alt="Upload preview"
+                            className="w-full h-20 object-cover rounded border border-slate-200"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(image.id)}
+                            className="absolute top-0.5 right-0.5 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold hover:bg-red-600 transition-colors opacity-90 hover:opacity-100"
+                            title="Remove image"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {uploadedImages.length > 0 && (
+                    <p className="text-[9px] text-slate-500 mt-1">
+                      ✅ Images auto-compressed to save space ({uploadedImages.length}/3)
+                    </p>
+                  )}
                 </div>
               </fieldset>
             </div>
