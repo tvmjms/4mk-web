@@ -185,13 +185,16 @@ class ContentModerator {
     // Check for obvious profanity/inappropriate content
     const profanityPatterns = [
       /f[*u]ck/gi, /sh[*i]t/gi, /b[*i]tch/gi, /d[*a]mn/gi,
-      /ass(hole)?/gi, /crap/gi, /hell/gi
+      /ass(hole)?/gi, /crap/gi
     ];
     
     const inappropriatePatterns = [
-      /sex/gi, /porn/gi, /nude/gi, /naked/gi,
-      /drug/gi, /weed/gi, /cocaine/gi, /meth/gi,
-      /gun/gi, /weapon/gi, /kill/gi, /murder/gi
+      /\bviolence\b/gi, /\bviolent\b/gi, /\bhate\b/gi, /\bhating\b/gi,
+      /\bhurt\s+(someone|people|others)/gi, /\battack\b/gi,
+      /\bkill\b/gi, /\bmurder\b/gi, /\bweapon\b/gi, /\bgun\b/gi,
+      /\bsex\b/gi, /\bporn\b/gi, /\bnude\b/gi, /\bnaked\b/gi,
+      /\bdrug\b/gi, /\bweed\b/gi, /\bcocaine\b/gi, /\bmeth\b/gi,
+      /\bsuicide\b/gi, /\bself[- ]?harm\b/gi
     ];
 
     // Check for personal information
@@ -266,11 +269,26 @@ class ContentModerator {
         },
         body: JSON.stringify({
           input: text,
-          model: 'text-moderation-latest'
+          model: 'omni-moderation-latest'
         })
       });
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('OpenAI Moderation API error:', response.status, errorText);
+        throw new Error(`OpenAI API returned ${response.status}: ${errorText}`);
+      }
+
       const data = await response.json();
+      
+      // Log the response for debugging
+      console.log('OpenAI Moderation API response:', JSON.stringify(data));
+
+      if (!data.results || !data.results[0]) {
+        console.error('Unexpected OpenAI API response format:', data);
+        throw new Error('Invalid response format from OpenAI API');
+      }
+
       const result = data.results[0];
 
       const issues: string[] = [];
@@ -308,6 +326,7 @@ class ContentModerator {
       };
     } catch (error) {
       console.error('AI text moderation error:', error);
+      // Fallback to quick check instead of returning the error
       return this.quickTextCheck(text);
     }
   }

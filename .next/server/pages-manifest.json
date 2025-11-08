@@ -3,6 +3,7 @@
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
   "/": "pages/index.js",
-  "/needs/create": "pages/needs/create.js",
-  "/login": "pages/login.js"
+  "/api/moderate-text": "pages/api/moderate-text.js",
+  "/login": "pages/login.js",
+  "/needs/create": "pages/needs/create.js"
 }
