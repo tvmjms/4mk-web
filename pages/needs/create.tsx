@@ -806,14 +806,10 @@ export default function NewNeedPage() {
                     </button>
                   )}
                   {contactPhone.trim() && (
-                    <button
-                      onClick={sendSmsReceipt}
-                      disabled={smsSending || smsSent}
-                      className="flex-1 bg-green-500 text-white px-2 py-1 rounded text-xs font-medium hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                      title="SMS via email-to-SMS gateway (experimental)"
-                    >
-                      {smsSending ? "Sending..." : smsSent ? "✅ Sent" : "📱 SMS"}
-                    </button>
+                    <div className="flex-1 bg-gray-300 text-gray-600 px-2 py-1 rounded text-xs font-medium text-center">
+                      📱 SMS Coming Soon
+                      <div className="text-[10px] text-gray-500">v2.0 with Twilio</div>
+                    </div>
                   )}
                 </div>
                 {err && !needId && (
@@ -833,7 +829,7 @@ export default function NewNeedPage() {
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={() => router.push('/dashboard')}
-                    disabled={emailSending || smsSending}
+                    disabled={emailSending}
                     className="bg-blue-600 text-white py-2 px-3 rounded text-xs font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
                     Dashboard
@@ -841,11 +837,11 @@ export default function NewNeedPage() {
                   <button
                     onClick={(e) => {
                       e.preventDefault();
-                      if (needId && !emailSending && !smsSending) {
+                      if (needId && !emailSending) {
                         router.push(`/needs/${needId}/edit`);
                       }
                     }}
-                    disabled={emailSending || smsSending}
+                    disabled={emailSending}
                     className="bg-blue-600 text-white py-2 px-3 rounded text-xs font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
                     Edit Need
@@ -853,11 +849,11 @@ export default function NewNeedPage() {
                 </div>
                 <button
                   onClick={() => {
-                    if (!emailSending && !smsSending) {
+                    if (!emailSending) {
                       router.push('/');
                     }
                   }}
-                  disabled={emailSending || smsSending}
+                  disabled={emailSending}
                   className="w-full bg-green-600 text-white py-2 px-3 rounded text-xs font-medium hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   Return to Home
