@@ -459,7 +459,7 @@ export default function NewNeedPage() {
       // Upload to Supabase Storage
       const fileName = `${user?.id}/${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
       const { data, error } = await supabase.storage
-        .from('need-images')
+        .from('need-attachments')
         .upload(fileName, compressedFile, {
           contentType: 'image/jpeg',
           upsert: false,
@@ -472,7 +472,7 @@ export default function NewNeedPage() {
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
-        .from('need-images')
+        .from('need-attachments')
         .getPublicUrl(data.path);
       
       // Add to uploaded images array
@@ -504,10 +504,10 @@ export default function NewNeedPage() {
     try {
       // Extract file path from public URL
       const url = new URL(image.url);
-      const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/need-images\/(.+)/);
+      const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/need-attachments\/(.+)/);
       if (pathMatch && pathMatch[1]) {
         const filePath = pathMatch[1];
-        await supabase.storage.from('need-images').remove([filePath]);
+        await supabase.storage.from('need-attachments').remove([filePath]);
       }
     } catch (error) {
       console.error('Error deleting image from storage:', error);

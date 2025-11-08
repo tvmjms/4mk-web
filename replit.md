@@ -68,28 +68,23 @@ npm run dev
 - ✅ Server running on port 5000
 - ✅ Email functionality working (Gmail integration)
 - ✅ Image upload feature implemented (client-side compression + Supabase Storage)
-- ⚠️ **Image uploads require Supabase Storage setup** - see docs/supabase-image-setup.md
+- ⚠️ **Database migration required for images** - run migration in `supabase/migrations/add_images_column.sql`
 - ⏸️ SMS functionality disabled (greyed out "Coming Soon")
 
-## Image Upload Setup (Required)
+## Image Upload Setup
 
-The image upload feature requires Supabase Storage configuration. **Follow these steps**:
+The image upload feature uses your existing Supabase Storage configuration:
 
-1. **Run Database Migration**:
+1. **✅ Storage Bucket**: Uses existing `need-attachments` bucket (already configured)
+2. **⚠️ Database Migration Required**:
    - Open Supabase Dashboard → SQL Editor
    - Run the migration in `supabase/migrations/add_images_column.sql`
    - This adds the `images` column to the `needs` table
 
-2. **Create Storage Bucket**:
-   - Follow the complete guide in `docs/supabase-image-setup.md`
-   - Create bucket named `need-images`
-   - Configure bucket policies for authenticated upload/delete
-   - Enable public read access
-
 **How it works**:
 - Users can upload 1-3 images when creating a need
 - Images are automatically compressed (max 800px, ~500KB) for sustainability
-- Uploaded directly to Supabase Storage from browser (efficient)
+- Uploaded directly to Supabase Storage `need-attachments` bucket
 - URLs stored in database `needs.images` array
 - Free tier includes 1GB storage (~10,000 compressed images)
 
