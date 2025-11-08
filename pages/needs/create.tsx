@@ -97,6 +97,20 @@ export default function NewNeedPage() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  // Content moderation state - separate state per field
+  const [titleModerationError, setTitleModerationError] = useState<string | null>(null);
+  const [descriptionModerationError, setDescriptionModerationError] = useState<string | null>(null);
+  const [isModeratingTitle, setIsModeratingTitle] = useState(false);
+  const [isModeratingDescription, setIsModeratingDescription] = useState(false);
+  
+  // Separate timeout refs per field to prevent cross-field cancellation
+  const titleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const descriptionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Track request IDs to prevent stale responses
+  const titleRequestIdRef = useRef<number>(0);
+  const descriptionRequestIdRef = useRef<number>(0);
+  
   // 🔍 DEBUG: Track component renders to detect double-rendering
   const renderCount = useRef(0);
   renderCount.current += 1;
@@ -143,6 +157,18 @@ export default function NewNeedPage() {
     document.addEventListener('click', globalClickHandler, true);
     return () => document.removeEventListener('click', globalClickHandler, true);
   }, []); // Only run once on mount
+
+  // Cleanup moderation timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (titleTimeoutRef.current) {
+        clearTimeout(titleTimeoutRef.current);
+      }
+      if (descriptionTimeoutRef.current) {
+        clearTimeout(descriptionTimeoutRef.current);
+      }
+    };
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -200,6 +226,12 @@ export default function NewNeedPage() {
     if (submittedFormData === currentFormData) {
       console.log('Form submission blocked - identical data already submitted');
       setErr("This exact need has already been submitted. Please modify the form or wait before submitting again.");
+      return;
+    }
+    
+    // Check for moderation errors in any field
+    if (titleModerationError || descriptionModerationError) {
+      setErr("Please fix the content safety issues before submitting.");
       return;
     }
     
@@ -438,6 +470,84 @@ export default function NewNeedPage() {
 
   const supabase = useSupabaseClient();
 
+  // Debounced content moderation function with per-field tracking
+  const moderateContent = async (text: string, field: 'title' | 'description') => {
+    // Select the appropriate refs and setters for this field
+    const timeoutRef = field === 'title' ? titleTimeoutRef : descriptionTimeoutRef;
+    const requestIdRef = field === 'title' ? titleRequestIdRef : descriptionRequestIdRef;
+    const setError = field === 'title' ? setTitleModerationError : setDescriptionModerationError;
+    const setModeratingState = field === 'title' ? setIsModeratingTitle : setIsModeratingDescription;
+
+    // Clear any existing timeout for THIS field only
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    // Don't moderate empty text
+    if (!text || text.trim().length === 0) {
+      setError(null);
+      setModeratingState(false);
+      return;
+    }
+
+    // Increment request ID to track this specific request
+    requestIdRef.current += 1;
+    const currentRequestId = requestIdRef.current;
+
+    // Set moderating state
+    setModeratingState(true);
+
+    // Debounce - wait 500ms after user stops typing
+    timeoutRef.current = setTimeout(async () => {
+      try {
+        const response = await fetch('/api/moderate-text', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+
+        const result = await response.json();
+
+        // Only apply results if this is still the most recent request (prevent stale responses)
+        if (currentRequestId === requestIdRef.current) {
+          // If content is flagged as inappropriate
+          if (!result.approved) {
+            setError(`⚠️ ${result.reasons.join('. ')}. Please revise your ${field}.`);
+          } else {
+            setError(null);
+          }
+        }
+
+      } catch (error) {
+        console.error('Moderation error:', error);
+        // Fail open - don't block user if moderation service is down
+        // Only clear error if this is still the most recent request
+        if (currentRequestId === requestIdRef.current) {
+          setError(null);
+        }
+      } finally {
+        // Only clear moderating state if this is still the most recent request
+        if (currentRequestId === requestIdRef.current) {
+          setModeratingState(false);
+        }
+      }
+    }, 500); // 500ms debounce
+  };
+
+  // Updated Title change handler with moderation
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setTitle(value);
+    moderateContent(value, 'title');
+  };
+
+  // Updated Description change handler with moderation
+  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setDescription(value);
+    moderateContent(value, 'description');
+  };
+
   // Image upload handler with compression
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -571,7 +681,7 @@ export default function NewNeedPage() {
                 <label className="block font-medium text-slate-700 mb-0.5 text-xs">Title *</label>
                 <input
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={handleTitleChange}
                   className="w-full px-2 py-0.5 rounded border border-slate-300 text-xs focus:border-turquoise-400 focus:ring-1 focus:ring-turquoise-400"
                   required
                   disabled={isSubmitting}
@@ -603,13 +713,27 @@ export default function NewNeedPage() {
                 <label className="block font-medium text-slate-700 mb-0.5 text-xs">Description</label>
                 <textarea
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={handleDescriptionChange}
                   className="w-full px-2 py-0.5 rounded border border-slate-300 text-xs focus:border-turquoise-400 focus:ring-1 focus:ring-turquoise-400"
                   rows={2}
                   disabled={isSubmitting}
                   placeholder="Provide more details about your need..."
                 />
               </div>
+              
+              {/* Content Moderation Error Display */}
+              {(titleModerationError || descriptionModerationError) && (
+                <div className="mb-2 p-2 bg-red-50 border border-red-300 rounded text-xs text-red-700">
+                  {titleModerationError || descriptionModerationError}
+                </div>
+              )}
+              
+              {/* Moderation Status Indicator */}
+              {(isModeratingTitle || isModeratingDescription) && (
+                <div className="mb-2 p-1 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
+                  🔍 Checking content safety...
+                </div>
+              )}
 
               {/* Address (Optional) */}
               <fieldset className="border border-slate-200 p-2 rounded">
