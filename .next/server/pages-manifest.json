@@ -2,9 +2,9 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/": "pages/index.js",
+  "/needs/create": "pages/needs/create.js",
   "/login": "pages/login.js",
-  "/api/send-sms": "pages/api/send-sms.js",
+  "/api/create-need-direct": "pages/api/create-need-direct.js",
   "/dashboard": "pages/dashboard.js",
-  "/needs/create": "pages/needs/create.js"
+  "/api/send-email": "pages/api/send-email.js"
 }
