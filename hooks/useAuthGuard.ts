@@ -10,7 +10,7 @@ interface AuthGuardOptions {
 }
 
 export function useAuthGuard(options: AuthGuardOptions = {}) {
-  const { requireAuth = true, redirectTo = '/login', timeout = 500 } = options;
+  const { requireAuth = true, redirectTo = '/login', timeout = 100 } = options;
   const session = useSession();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
@@ -33,32 +33,33 @@ export function useAuthGuard(options: AuthGuardOptions = {}) {
       return;
     }
 
+    // If we have a session with user, authenticate immediately
+    if (session?.user) {
+      console.log('Auth Guard: Session found for user:', session.user.id);
+      setIsAuthenticated(true);
+      setIsLoading(false);
+      return;
+    }
+
+    // If session is null (not undefined), redirect immediately
+    if (session === null) {
+      const redirectUrl = createRedirectUrl(redirectTo);
+      console.log('Auth Guard: No session, redirecting to:', redirectUrl);
+      router.replace(redirectUrl);
+      return;
+    }
+
+    // Session is undefined (still loading), wait briefly before giving up
     const timeoutId = setTimeout(() => {
-      if (session === null) {
+      if (session === null || !session?.user) {
         const redirectUrl = createRedirectUrl(redirectTo);
-        console.log('Auth Guard: No session found, redirecting to:', redirectUrl);
+        console.log('Auth Guard: Timeout - redirecting to:', redirectUrl);
         router.replace(redirectUrl);
-      } else if (session?.user) {
-        console.log('Auth Guard: Session found for user:', session.user.id);
-        setIsAuthenticated(true);
-        setIsLoading(false);
       }
     }, timeout);
 
-    if (session?.user) {
-      clearTimeout(timeoutId);
-      console.log('Auth Guard: Immediate session found for user:', session.user.id);
-      setIsAuthenticated(true);
-      setIsLoading(false);
-    } else if (session === null) {
-      clearTimeout(timeoutId);
-      const redirectUrl = createRedirectUrl(redirectTo);
-      console.log('Auth Guard: Immediate null session, redirecting to:', redirectUrl);
-      router.replace(redirectUrl);
-    }
-
     return () => clearTimeout(timeoutId);
-  }, [session, router, requireAuth, redirectTo, timeout]);
+  }, [session, router, requireAuth, redirectTo, timeout, createRedirectUrl]);
 
   return {
     isLoading,
