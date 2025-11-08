@@ -687,6 +687,17 @@ export default function NewNeedPage() {
                   disabled={isSubmitting}
                   placeholder="What do you need help with?"
                 />
+                {/* Title moderation status */}
+                {isModeratingTitle && (
+                  <div className="mt-1 p-1 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
+                    🔍 Checking content safety...
+                  </div>
+                )}
+                {titleModerationError && (
+                  <div className="mt-1 p-2 bg-red-50 border border-red-300 rounded text-xs text-red-700 font-medium">
+                    {titleModerationError}
+                  </div>
+                )}
               </div>
 
               {/* Category */}
@@ -719,21 +730,18 @@ export default function NewNeedPage() {
                   disabled={isSubmitting}
                   placeholder="Provide more details about your need..."
                 />
+                {/* Description moderation status */}
+                {isModeratingDescription && (
+                  <div className="mt-1 p-1 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
+                    🔍 Checking content safety...
+                  </div>
+                )}
+                {descriptionModerationError && (
+                  <div className="mt-1 p-2 bg-red-50 border border-red-300 rounded text-xs text-red-700 font-medium">
+                    {descriptionModerationError}
+                  </div>
+                )}
               </div>
-              
-              {/* Content Moderation Error Display */}
-              {(titleModerationError || descriptionModerationError) && (
-                <div className="mb-2 p-2 bg-red-50 border border-red-300 rounded text-xs text-red-700">
-                  {titleModerationError || descriptionModerationError}
-                </div>
-              )}
-              
-              {/* Moderation Status Indicator */}
-              {(isModeratingTitle || isModeratingDescription) && (
-                <div className="mb-2 p-1 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
-                  🔍 Checking content safety...
-                </div>
-              )}
 
               {/* Address (Optional) */}
               <fieldset className="border border-slate-200 p-2 rounded">
