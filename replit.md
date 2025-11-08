@@ -23,11 +23,12 @@
 ## Key Features
 1. **Authentication**: Supabase-based auth with email/password and magic links
 2. **Needs Management**: Create, view, and manage community needs
-3. **Image Uploads**: Upload up to 3 images per need with automatic compression (max 800px, 500KB for sustainability)
-4. **Dashboard**: Personal dashboard for managing your needs
-5. **Email Notifications**: Automated emails for need updates via Gmail
-6. **Receipt System**: Track and display need fulfillment details
-7. **SMS Notifications**: Currently disabled (showing "Coming Soon"). Twilio integration available for future implementation when budget allows.
+3. **AI Content Moderation**: Real-time safety checks using OpenAI's free Moderation API for Title and Description fields
+4. **Image Uploads**: Upload up to 3 images per need with automatic compression (max 800px, 500KB for sustainability)
+5. **Dashboard**: Personal dashboard for managing your needs
+6. **Email Notifications**: Automated emails for need updates via Gmail
+7. **Receipt System**: Track and display need fulfillment details
+8. **SMS Notifications**: Currently disabled (showing "Coming Soon"). Twilio integration available for future implementation when budget allows.
 
 ## Environment Variables
 All credentials are stored in `.env.local`:
@@ -88,6 +89,45 @@ The image upload feature uses your existing Supabase Storage configuration:
 - URLs stored in database `needs.images` array
 - Free tier includes 1GB storage (~10,000 compressed images)
 
+## AI Content Moderation System
+
+The platform uses **OpenAI's free Moderation API** to ensure community safety and legal compliance. This is completely free and perfect for charity use cases.
+
+### Features
+- ✅ **Real-time checking**: Content is checked as users type (500ms debounce)
+- ✅ **Visual feedback**: Blue "checking" indicator while moderating, red alert for violations
+- ✅ **Independent field moderation**: Title and Description are checked separately without cross-cancellation
+- ✅ **Stale response prevention**: Request ID tracking ensures old API responses don't override newer clean states
+- ✅ **Submission blocking**: Form submission is prevented if any field has moderation errors
+- ✅ **Fail-open design**: If moderation service is down, users can still submit (prioritizes availability)
+
+### How it works
+1. User types in Title or Description field
+2. After 500ms of no typing, content is sent to `/api/moderate-text`
+3. API calls OpenAI Moderation API to check for violations
+4. If flagged: Red alert shows specific violation categories
+5. If clean: No error, user can continue
+6. On submit: Form checks both fields and blocks submission if either has violations
+
+### Moderation Categories
+The system checks for:
+- Violence, self-harm, hate speech
+- Sexual content, harassment
+- Illegal activities
+
+### Files
+- `lib/contentModerator.ts` - Core moderation logic using OpenAI
+- `pages/api/moderate-text.ts` - API endpoint for real-time moderation
+- `pages/needs/create.tsx` - UI integration with debouncing and error handling
+
+### Testing
+To test the moderation:
+1. Login and go to "Create Need"
+2. Try typing inappropriate content like "violence" or "hate" in Title or Description
+3. Wait 500ms - you should see a red alert with the violation
+4. Replace with safe content like "help with groceries"
+5. The error should clear and you can submit the form
+
 ## Future Enhancements
 - **SMS Integration**: Twilio integration code exists in `/pages/api/send-sms.ts`. To enable:
   1. Sign up for free Twilio trial ($15 credit, ~500 SMS)
@@ -96,3 +136,4 @@ The image upload feature uses your existing Supabase Storage configuration:
   4. Enable SMS button in `pages/needs/create.tsx` (currently showing as "Coming Soon")
 - **Image Display**: Add image thumbnails to needs listings and dashboard
 - **Image Display in Receipts**: Show uploaded images in email/SMS receipts
+- **Image Moderation**: Extend AI moderation to uploaded images (OpenAI Moderation API supports images)
