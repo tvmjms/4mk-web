@@ -24,8 +24,9 @@
 1. **Authentication**: Supabase-based auth with email/password and magic links
 2. **Needs Management**: Create, view, and manage community needs
 3. **Dashboard**: Personal dashboard for managing your needs
-4. **Email Notifications**: Automated emails for need updates
+4. **Email Notifications**: Automated emails for need updates via Gmail
 5. **Receipt System**: Track and display need fulfillment details
+6. **SMS Notifications**: Currently disabled (showing "Coming Soon"). Twilio integration available for future implementation when budget allows.
 
 ## Environment Variables
 All credentials are stored in `.env.local`:
@@ -62,5 +63,14 @@ npm run dev
 - ✅ Application imported from GitHub
 - ✅ All dependencies installed
 - ✅ Environment variables configured
-- ✅ Database connected
+- ✅ Database connected (Supabase)
 - ✅ Server running on port 5000
+- ✅ Email functionality working (Gmail integration)
+- ⏸️ SMS functionality disabled (greyed out "Coming Soon")
+
+## Future Enhancements
+- **SMS Integration**: Twilio integration code exists in `/pages/api/send-sms.ts`. To enable:
+  1. Sign up for free Twilio trial ($15 credit, ~500 SMS)
+  2. Add environment variables: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`
+  3. Update send-sms.ts to use Twilio API instead of email gateways
+  4. Enable SMS button in `pages/needs/create.tsx` (currently showing as "Coming Soon")
