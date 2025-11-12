@@ -101,7 +101,7 @@ export default function DashboardPage() {
             {/* Title positioned absolutely like home page */}
             <div className="card-logo-main">My Needs</div>
 
-            <div className="w-full relative z-10 flex flex-col pt-10">
+            <div className="w-full relative z-10 flex flex-col pt-10 pb-3">
               {user && <NeedsList pageSize={10} columns={2} ownerId={user.id} />}
             </div>
           </div>
@@ -116,7 +116,7 @@ export default function DashboardPage() {
             {/* Title positioned absolutely like home page */}
             <div className="card-logo-main">My Offers</div>
 
-            <div className="w-full relative z-10 flex flex-col pt-10">
+            <div className="w-full relative z-10 flex flex-col pt-10 pb-3">
               {user && <NeedsList pageSize={10} columns={2} helperId={user.id} />}
             </div>
           </div>
