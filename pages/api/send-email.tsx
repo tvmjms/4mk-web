@@ -28,8 +28,27 @@ async function handleSendEmail(req: NextApiRequest, res: NextApiResponse) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const dashboardUrl = `https://4mk-web.vercel.app/dashboard`;
-    const needUrl = `https://4mk-web.vercel.app/needs/${needId}`;
+    const normalizeUrl = (url: string) => (url.startsWith('http') ? url : `https://${url}`.replace(/\/$/, ''));
+    const deriveBaseUrl = () => {
+      const envUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL;
+      if (envUrl) {
+        return normalizeUrl(envUrl);
+      }
+
+      const forwardedHost = req.headers['x-forwarded-host'] as string | undefined;
+      const hostHeader = req.headers.host;
+      const host = forwardedHost || hostHeader;
+      if (host) {
+        const protocol = host.startsWith('localhost') ? 'http' : 'https';
+        return `${protocol}://${host}`.replace(/\/$/, '');
+      }
+
+      return 'http://localhost:3000';
+    };
+
+    const baseUrl = deriveBaseUrl();
+    const dashboardUrl = `${baseUrl.replace(/\/$/, '')}/dashboard`;
+    const needUrl = `${baseUrl.replace(/\/$/, '')}/needs/${needId}`;
 
     // Get additional need details from request body
     const { street, city, state, zipCode, category, description, contactEmail, contactPhone, whatsappId } = req.body;
@@ -124,7 +143,7 @@ async function handleSendEmail(req: NextApiRequest, res: NextApiResponse) {
             <div style="margin-bottom: 16px;">
               <div style="display: flex; gap: 8px; margin-bottom: 8px;">
                 <a href="${dashboardUrl}" style="flex: 1; background-color: #2563eb; color: white; padding: 8px 12px; text-decoration: none; border-radius: 4px; font-size: 12px; font-weight: 500; text-align: center; display: block;">Dashboard</a>
-                <a href="${needUrl}/edit" style="flex: 1; background-color: #6b7280; color: white; padding: 8px 12px; text-decoration: none; border-radius: 4px; font-size: 12px; font-weight: 500; text-align: center; display: block;">Edit Need</a>
+                <a href="${needUrl}/edit" style="flex: 1; background-color: #14b8a6; color: white; padding: 8px 12px; text-decoration: none; border-radius: 4px; font-size: 12px; font-weight: 500; text-align: center; display: block;">Edit Need</a>
               </div>
               <a href="${needUrl}" style="width: 100%; background-color: #059669; color: white; padding: 8px 12px; text-decoration: none; border-radius: 4px; font-size: 12px; font-weight: 500; text-align: center; display: block; box-sizing: border-box;">View Full Details</a>
             </div>

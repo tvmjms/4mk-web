@@ -1,0 +1,29 @@
+{
+  "offer": {
+    "help": "Ofrecer Ayuda",
+    "type": "Tipo de Ayuda",
+    "submit": "Enviar Oferta",
+    "withdraw": "Retirar Oferta",
+    "return": "Iniciar Devolución",
+    "clarify": "Necesita Aclaración",
+    "resume": "Reanudar"
+  },
+  "status": {
+    "clarifying": "Aclarando - Se necesitan preguntas o información adicional"
+  },
+  "report": {
+    "abuse": "Reportar"
+  },
+  "disclaimer": {
+    "text": "4MK solo rastrea las comunicaciones a través de su sitio web o aplicación. La ayuda externa o los intercambios fuera de línea no son monitoreados ni respaldados."
+  },
+  "common": {
+    "cancel": "Cancelar",
+    "submit": "Enviar",
+    "loading": "Cargando..."
+  }
+}
+
+
+
+

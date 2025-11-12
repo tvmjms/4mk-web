@@ -35,7 +35,8 @@ async function handleCreateNeed(req: NextApiRequest, res: NextApiResponse) {
       contact_phone_e164,
       whatsapp_id,
       provider,
-      images
+      images,
+      attachments
     } = req.body;
 
     logger.debug('API route - Creating need with payload:', JSON.stringify(req.body, null, 2));
@@ -97,7 +98,17 @@ async function handleCreateNeed(req: NextApiRequest, res: NextApiResponse) {
         whatsapp_id: whatsapp_id || null,
         provider: provider || null,
         status: 'new',
-        images: images && images.length > 0 ? images : null
+        // Support both images (legacy) and attachments (new format)
+        attachments: attachments && attachments.length > 0 
+          ? JSON.stringify(attachments) 
+          : images && images.length > 0 
+            ? JSON.stringify(images.map((url: string) => ({ url, type: 'image', name: 'image' })))
+            : null,
+        attachment_count: attachments && attachments.length > 0 
+          ? attachments.length 
+          : images && images.length > 0 
+            ? images.length 
+            : 0
       }])
       .select('id')
       .single();

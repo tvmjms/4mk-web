@@ -54,52 +54,54 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen px-4">
+      <div className="max-w-6xl mx-auto">
       {/* Header */}
       <div className="mb-4 mt-6">
         {/* Title */}
         <h1 className="text-lg font-bold text-slate-800 mb-0">Dashboard</h1>
         
         {/* Welcome and Create Button Line */}
-        <div className="flex items-center gap-3 mb-3">
+          <div className="flex items-center gap-3 mb-3 relative">
           <p className="text-xs text-gray-600">Welcome back, {user?.email}</p>
           <Link href="/needs/create" className="py-1 px-3 rounded-md text-center font-semibold text-xs btn-turquoise">
             Create Need
           </Link>
           
           {/* Counter Boxes - Same Line, Right Side */}
-          <div className="flex gap-2 ml-auto">
-            <div className="bg-white/90 backdrop-blur-sm p-2 rounded shadow border border-white/20 min-w-[80px]">
-              <h3 className="text-xs font-medium text-slate-600 mb-1">Total</h3>
-              <p className="text-sm font-bold text-blue-600">{stats.totalNeeds}</p>
+            <div className="gold-stat-board">
+              <div className="gold-stat-card">
+                <span className="gold-stat-label">Total</span>
+                <span className="gold-stat-value">{stats.totalNeeds}</span>
+              </div>
+              <div className="gold-stat-card">
+                <span className="gold-stat-label">Active</span>
+                <span className="gold-stat-value">{stats.activeNeeds}</span>
             </div>
-            <div className="bg-white/90 backdrop-blur-sm p-2 rounded shadow border border-white/20 min-w-[80px]">
-              <h3 className="text-xs font-medium text-slate-600 mb-1">Active</h3>
-              <p className="text-sm font-bold text-green-600">{stats.activeNeeds}</p>
+              <div className="gold-stat-card">
+                <span className="gold-stat-label">Fulfilled</span>
+                <span className="gold-stat-value">{stats.fulfilledNeeds}</span>
             </div>
-            <div className="bg-white/90 backdrop-blur-sm p-2 rounded shadow border border-white/20 min-w-[80px]">
-              <h3 className="text-xs font-medium text-slate-600 mb-1">Fulfilled</h3>
-              <p className="text-sm font-bold text-purple-600">{stats.fulfilledNeeds}</p>
+              <div className="gold-stat-card">
+                <span className="gold-stat-label">Pending</span>
+                <span className="gold-stat-value">{stats.pendingNeeds}</span>
             </div>
-            <div className="bg-white/90 backdrop-blur-sm p-2 rounded shadow border border-white/20 min-w-[80px]">
-              <h3 className="text-xs font-medium text-slate-600 mb-1">Pending</h3>
-              <p className="text-sm font-bold text-orange-600">{stats.pendingNeeds}</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Two-Card Layout */}
-      <div className="mx-auto max-w-6xl py-1 grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+      <div className="mx-auto max-w-6xl py-1 px-6 grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
         {/* Left Card: My Needs */}
         <div className="flex justify-center items-start">
-          <div className="card-container w-full" style={{ padding: '1.6rem' }}>
+          <div className="card-container list-card w-full">
             <div className="card-rim" />
             <div className="card-gold-frame" />
             
             {/* Title positioned absolutely like home page */}
             <div className="card-logo-main">My Needs</div>
-            
-            <div className="max-w-2xl mx-auto relative z-10" style={{ paddingTop: '2rem' }}>
+
+            <div className="w-full relative z-10 flex flex-col pt-10">
               {user && <NeedsList pageSize={10} columns={2} ownerId={user.id} />}
             </div>
           </div>
@@ -107,14 +109,14 @@ export default function DashboardPage() {
 
         {/* Right Card: My Offers */}
         <div className="flex justify-center items-start">
-          <div className="card-container w-full" style={{ padding: '1.6rem' }}>
+          <div className="card-container list-card w-full">
             <div className="card-rim" />
             <div className="card-gold-frame" />
             
             {/* Title positioned absolutely like home page */}
             <div className="card-logo-main">My Offers</div>
-            
-            <div className="max-w-2xl mx-auto relative z-10" style={{ paddingTop: '2rem' }}>
+
+            <div className="w-full relative z-10 flex flex-col pt-10">
               {user && <NeedsList pageSize={10} columns={2} helperId={user.id} />}
             </div>
           </div>

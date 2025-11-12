@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabase';
 import { usStatesAndCities } from '@/utils/usStatesAndCities';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
+import MediaUpload from '@/components/MediaUpload';
 
 type Need = {
   id: string;
@@ -21,6 +22,8 @@ type Need = {
   edit_notes?: string | null;
   last_edited_at?: string | null;
   edit_count?: number | null;
+  attachments?: any;
+  attachment_count?: number;
 };
 
 export default function EditNeed() {
@@ -34,6 +37,16 @@ export default function EditNeed() {
   const [deleting, setDeleting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [changeNotes, setChangeNotes] = useState<string>('');
+  const [mediaFiles, setMediaFiles] = useState<any[]>([]);
+  const [attachments, setAttachments] = useState<any[]>([]);
+  const [titleModerationError, setTitleModerationError] = useState<string | null>(null);
+  const [descriptionModerationError, setDescriptionModerationError] = useState<string | null>(null);
+  const [isModeratingTitle, setIsModeratingTitle] = useState(false);
+  const [isModeratingDescription, setIsModeratingDescription] = useState(false);
+  const titleTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const descriptionTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const titleRequestIdRef = React.useRef(0);
+  const descriptionRequestIdRef = React.useRef(0);
   
   // Available cities based on selected state
   const availableCities = need?.state && usStatesAndCities[need.state] ? usStatesAndCities[need.state].cities : [];
@@ -44,6 +57,115 @@ export default function EditNeed() {
       setNeed({ ...need, state: newState, city: "" });
     }
   };
+
+  // Content moderation for title and description
+  const moderateContent = async (text: string, field: 'title' | 'description') => {
+    if (!text || text.trim().length < 3) {
+      if (field === 'title') {
+        setTitleModerationError(null);
+        setIsModeratingTitle(false);
+      } else {
+        setDescriptionModerationError(null);
+        setIsModeratingDescription(false);
+      }
+      return;
+    }
+
+    // Clear existing timeout
+    if (field === 'title' && titleTimeoutRef.current) {
+      clearTimeout(titleTimeoutRef.current);
+    } else if (field === 'description' && descriptionTimeoutRef.current) {
+      clearTimeout(descriptionTimeoutRef.current);
+    }
+
+    // Increment request ID
+    if (field === 'title') {
+      titleRequestIdRef.current += 1;
+    } else {
+      descriptionRequestIdRef.current += 1;
+    }
+    const currentRequestId = field === 'title' ? titleRequestIdRef.current : descriptionRequestIdRef.current;
+
+    // Set moderating state
+    if (field === 'title') {
+      setIsModeratingTitle(true);
+    } else {
+      setIsModeratingDescription(true);
+    }
+
+    // Debounce - wait 500ms after user stops typing
+    const timeout = setTimeout(async () => {
+      try {
+        const response = await fetch('/api/moderate-text', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+
+        const result = await response.json();
+
+        // Only apply results if this is still the most recent request
+        const isCurrentRequest = field === 'title' 
+          ? currentRequestId === titleRequestIdRef.current
+          : currentRequestId === descriptionRequestIdRef.current;
+
+        if (isCurrentRequest) {
+          if (!result.approved) {
+            const errorMsg = `⚠️ ${result.reasons.join('. ')}. Please revise your ${field}.`;
+            if (field === 'title') {
+              setTitleModerationError(errorMsg);
+            } else {
+              setDescriptionModerationError(errorMsg);
+            }
+          } else {
+            if (field === 'title') {
+              setTitleModerationError(null);
+            } else {
+              setDescriptionModerationError(null);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Moderation error:', error);
+        // Fail open - don't block user if moderation service is down
+        if (field === 'title') {
+          setTitleModerationError(null);
+        } else {
+          setDescriptionModerationError(null);
+        }
+      } finally {
+        const isCurrentRequest = field === 'title' 
+          ? currentRequestId === titleRequestIdRef.current
+          : currentRequestId === descriptionRequestIdRef.current;
+
+        if (isCurrentRequest) {
+          if (field === 'title') {
+            setIsModeratingTitle(false);
+          } else {
+            setIsModeratingDescription(false);
+          }
+        }
+      }
+    }, 500);
+
+    if (field === 'title') {
+      titleTimeoutRef.current = timeout;
+    } else {
+      descriptionTimeoutRef.current = timeout;
+    }
+  };
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (titleTimeoutRef.current) {
+        clearTimeout(titleTimeoutRef.current);
+      }
+      if (descriptionTimeoutRef.current) {
+        clearTimeout(descriptionTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Fetch the need by ID and check ownership
   useEffect(() => {
@@ -62,6 +184,29 @@ export default function EditNeed() {
         setErr("You can only edit your own needs. This need belongs to someone else.");
       } else {
         setNeed(data);
+        // Load attachments if they exist
+        if (data.attachments) {
+          try {
+            const atts = typeof data.attachments === 'string' 
+              ? JSON.parse(data.attachments) 
+              : data.attachments;
+            setAttachments(Array.isArray(atts) ? atts : []);
+            // Convert to MediaUpload format
+            const media = Array.isArray(atts) ? atts.map((att: any, idx: number) => ({
+              id: `existing-${idx}`,
+              uploaded_url: att.url || att,
+              type: att.type || 'document',
+              name: att.name || 'attachment',
+              uploading: false,
+              moderating: false,
+              moderation_status: 'approved' as const
+            })) : [];
+            setMediaFiles(media);
+          } catch {
+            setAttachments([]);
+            setMediaFiles([]);
+          }
+        }
       }
       setLoading(false);
     })();
@@ -71,8 +216,29 @@ export default function EditNeed() {
     e.preventDefault();
     if (!need) return;
 
+    // Validate required fields: state and city are mandatory
+    if (!need.state || !need.city) {
+      setErr("State and City are required fields.");
+      return;
+    }
+
+    // Block submission if moderation errors exist or moderation is in progress
+    if (titleModerationError || descriptionModerationError || isModeratingTitle || isModeratingDescription) {
+      setErr("Please wait for content safety check to complete or fix any flagged content before saving.");
+      return;
+    }
+
     setSaving(true);
     setErr(null);
+
+    // Prepare attachments from media files
+    const attachmentData = mediaFiles
+      .filter(f => f.uploaded_url)
+      .map(f => ({
+        url: f.uploaded_url,
+        type: f.type || 'document',
+        name: f.name || 'attachment'
+      }));
 
     const { error } = await supabase
       .from('needs')
@@ -87,6 +253,8 @@ export default function EditNeed() {
         contact_email: need.contact_email || null,
         contact_phone_e164: need.contact_phone_e164 || null,
         whatsapp_id: need.whatsapp_id || null,
+        attachments: attachmentData.length > 0 ? JSON.stringify(attachmentData) : null,
+        attachment_count: attachmentData.length,
         // Temporarily comment out new fields until migration is run
         // edit_notes: changeNotes.trim() || null,
         // last_edited_at: new Date().toISOString(),
@@ -191,11 +359,27 @@ export default function EditNeed() {
                 <label className="block font-medium text-slate-700 mb-0.5 text-xs">Title *</label>
                 <input
                   value={need.title}
-                  onChange={(e) => setNeed({ ...need, title: e.target.value })}
-                  className="w-full px-2 py-0.5 rounded border border-slate-300 text-xs focus:border-turquoise-400 focus:ring-1 focus:ring-turquoise-400"
+                  onChange={(e) => {
+                    setNeed({ ...need, title: e.target.value });
+                    moderateContent(e.target.value, 'title');
+                  }}
+                  className={`w-full px-2 py-0.5 rounded border text-xs focus:border-turquoise-400 focus:ring-1 focus:ring-turquoise-400 ${
+                    titleModerationError ? 'border-red-300' : 'border-slate-300'
+                  }`}
                   required
                   placeholder="What do you need help with?"
+                  disabled={!!descriptionModerationError}
                 />
+                {isModeratingTitle && (
+                  <div className="mt-1 p-1 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
+                    🔍 Checking content safety...
+                  </div>
+                )}
+                {titleModerationError && (
+                  <div className="mt-1 p-2 bg-red-50 border border-red-300 rounded text-xs text-red-700 font-medium">
+                    {titleModerationError}
+                  </div>
+                )}
               </div>
 
               {/* Category */}
@@ -221,11 +405,53 @@ export default function EditNeed() {
                 <label className="block font-medium text-slate-700 mb-0.5 text-xs">Description</label>
                 <textarea
                   value={need.description || ""}
-                  onChange={(e) => setNeed({ ...need, description: e.target.value })}
-                  className="w-full px-2 py-0.5 rounded border border-slate-300 text-xs focus:border-turquoise-400 focus:ring-1 focus:ring-turquoise-400"
+                  onChange={(e) => {
+                    setNeed({ ...need, description: e.target.value });
+                    moderateContent(e.target.value, 'description');
+                  }}
+                  className={`w-full px-2 py-0.5 rounded border text-xs focus:border-turquoise-400 focus:ring-1 focus:ring-turquoise-400 ${
+                    descriptionModerationError ? 'border-red-300' : 'border-slate-300'
+                  }`}
                   rows={2}
                   placeholder="Provide more details about your need..."
+                  disabled={!!titleModerationError}
+                  readOnly={!!titleModerationError}
                 />
+                {isModeratingDescription && (
+                  <div className="mt-1 p-1 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
+                    🔍 Checking content safety...
+                  </div>
+                )}
+                {descriptionModerationError && (
+                  <div className="mt-1 p-2 bg-red-50 border border-red-300 rounded text-xs text-red-700 font-medium">
+                    {descriptionModerationError}
+                  </div>
+                )}
+              </div>
+
+              {/* Attachments */}
+              <div className="mb-2">
+                <label className="block font-medium text-slate-700 mb-0.5 text-xs">Attachments (Optional)</label>
+                <MediaUpload
+                  onMediaUpdate={(files) => {
+                    setMediaFiles(files);
+                    const uploaded = files
+                      .filter(f => f.uploaded_url)
+                      .map(f => ({
+                        url: f.uploaded_url,
+                        type: f.type || 'document',
+                        name: f.name || 'attachment'
+                      }));
+                    setAttachments(uploaded);
+                  }}
+                  maxFiles={5}
+                  disabled={saving}
+                />
+                {attachments.length > 0 && (
+                  <div className="text-xs text-gray-600 mt-1">
+                    {attachments.length} file(s) attached
+                  </div>
+                )}
               </div>
 
               {/* Address (Optional) */}
@@ -241,41 +467,47 @@ export default function EditNeed() {
                       placeholder="Street address"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block font-medium text-slate-600 mb-0.5 text-[10px]">State</label>
-                      <select
-                        value={need.state || ""}
-                        onChange={(e) => handleStateChange(e.target.value)}
-                        className="w-full px-1 py-0.5 rounded border border-slate-300 text-xs focus:border-turquoise-400"
-                      >
-                        <option value="">Select State</option>
-                        {Object.keys(usStatesAndCities).map((stateCode) => (
-                          <option key={stateCode} value={stateCode}>
-                            {usStatesAndCities[stateCode].name} ({stateCode})
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block font-medium text-slate-600 mb-0.5 text-[10px]">
+                          State <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          value={need.state || ""}
+                          onChange={(e) => handleStateChange(e.target.value)}
+                          className="w-full px-1 py-0.5 rounded border border-slate-300 text-xs focus:border-turquoise-400"
+                          required
+                        >
+                          <option value="">Select State</option>
+                          {Object.keys(usStatesAndCities).map((stateCode) => (
+                            <option key={stateCode} value={stateCode}>
+                              {usStatesAndCities[stateCode].name} ({stateCode})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block font-medium text-slate-600 mb-0.5 text-[10px]">
+                          City <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          value={need.city || ""}
+                          onChange={(e) => setNeed({ ...need, city: e.target.value })}
+                          className="w-full px-1 py-0.5 rounded border border-slate-300 text-xs focus:border-turquoise-400"
+                          disabled={!need.state}
+                          required
+                        >
+                          <option value="">
+                            {need.state ? "Select City" : "Select State First"}
                           </option>
-                        ))}
-                      </select>
+                          {availableCities.map((cityName) => (
+                            <option key={cityName} value={cityName}>
+                              {cityName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block font-medium text-slate-600 mb-0.5 text-[10px]">City</label>
-                      <select
-                        value={need.city || ""}
-                        onChange={(e) => setNeed({ ...need, city: e.target.value })}
-                        className="w-full px-1 py-0.5 rounded border border-slate-300 text-xs focus:border-turquoise-400"
-                        disabled={!need.state}
-                      >
-                        <option value="">
-                          {need.state ? "Select City" : "Select State First"}
-                        </option>
-                        {availableCities.map((cityName) => (
-                          <option key={cityName} value={cityName}>
-                            {cityName}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
                   <div>
                     <label className="block font-medium text-slate-600 mb-0.5 text-[10px]">Zip Code</label>
                     <input

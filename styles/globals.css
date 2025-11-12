@@ -28,7 +28,7 @@ body {
     0 10px 10px -5px rgba(0, 0, 0, 0.1),
     0 0 0 1px rgba(255, 255, 255, 0.1) inset;
   margin: 1.5rem auto;
-  padding: 2rem;
+  padding: 1.5rem;
   position: relative;
   transform: perspective(1200px) translateZ(20px);
   transform-style: preserve-3d;
@@ -36,6 +36,25 @@ body {
   color: white;
   backdrop-filter: blur(10px);
   overflow: hidden;
+}
+
+/* Cards inside grid layouts should not have auto margins */
+.grid .card-container {
+  margin: 0;
+}
+
+/* 
+ * Standardized list card styling - consistent spacing for all list cards
+ * Used for full-page/dashboard view - matches list-gradient-panel padding
+ * Padding: 18px 30px 12px 30px
+ *   - Top: 18px (matches gold frame inset)
+ *   - Left/Right: 30px (18px frame + 12px content margin = matches grid gap-3)
+ *   - Bottom: 12px (matches grid gap-3 spacing)
+ * 
+ * All list cards must use this class or list-gradient-panel for consistent spacing
+ */
+.card-container.list-card {
+  padding: 18px 30px 12px 30px !important; /* Standardized padding - matches list-gradient-panel */
 }
 
 .card-container::before {
@@ -126,8 +145,8 @@ body {
 /* Logo variants used inside the card (two headers) */
 .card-logo-shadow {
   position: absolute;
-  left: 28px;
-  top: 28px;
+  left: 32px;
+  top: 32px;
   color: rgba(255,255,255,0.18);
   font-weight: 800;
   transform: translate(4px, 4px) scale(1.02);
@@ -137,8 +156,8 @@ body {
 
 .card-logo-main {
   position: absolute;
-  left: 26px;
-  top: 24px;
+  left: 30px;
+  top: 28px;
   color: rgba(255,255,255,0.95);
   font-weight: 800;
   pointer-events: none;
@@ -236,14 +255,79 @@ body {
 .btn-silver:active { filter: brightness(0.97); transform: translateY(1px); }
 .btn-silver:disabled { opacity: 0.6; pointer-events: none; }
 
+/* Silver 3D Metallic Buttons */
+.btn-silver-3d {
+  background: linear-gradient(145deg, #e8e8e8 0%, #c0c0c0 30%, #a8a8a8 60%, #d0d0d0 100%);
+  color: #1a1a1a;
+  border: none;
+  box-shadow: 
+    0 4px 8px rgba(0, 0, 0, 0.3),
+    0 2px 4px rgba(0, 0, 0, 0.2),
+    inset 0 2px 0 rgba(255, 255, 255, 0.8),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.2),
+    inset 0 1px 1px rgba(255, 255, 255, 0.6);
+  font-weight: 600;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-silver-3d::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.5s;
+}
+
+.btn-silver-3d:hover {
+  background: linear-gradient(145deg, #f0f0f0 0%, #d0d0d0 30%, #b8b8b8 60%, #e0e0e0 100%);
+  box-shadow: 
+    0 6px 12px rgba(0, 0, 0, 0.35),
+    0 3px 6px rgba(0, 0, 0, 0.25),
+    inset 0 2px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.15),
+    inset 0 1px 1px rgba(255, 255, 255, 0.7);
+  transform: translateY(-1px);
+}
+
+.btn-silver-3d:hover::before {
+  left: 100%;
+}
+
+.btn-silver-3d:active {
+  background: linear-gradient(145deg, #b8b8b8 0%, #a0a0a0 30%, #888888 60%, #c0c0c0 100%);
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.3),
+    inset 0 3px 5px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transform: translateY(1px);
+}
+
+.btn-silver-3d:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  filter: grayscale(0.3);
+}
+
 /* ensure the form content sits above decorative layers */
 .card-container > .relative.z-10 { z-index: 10; }
 
-/* Gradient panel used for the Needs list (Purple business card to match left card) */
+/* 
+ * Standardized list card panel styling
+ * Used for compact view (home page) - matches list-card padding
+ * Padding: 18px 30px 12px 30px
+ *   - Top: 18px (matches gold frame inset)
+ *   - Left/Right: 30px (18px frame + 12px content margin = matches grid gap-3)
+ *   - Bottom: 12px (matches grid gap-3 spacing)
+ */
 .list-gradient-panel {
   background: linear-gradient(135deg, #6b21a8 0%, #581c87 100%);
   border-radius: 6px; /* match purple card corners */
-  padding: 18px 18px 8px 18px; /* reduced bottom padding for tight spacing */
+  padding: 18px 30px 12px 30px; /* Standardized padding - matches list-card class */
   box-shadow:
     0 20px 35px rgba(0,0,0,0.35),
     0 0 0 1px rgba(255,255,255,0.08) inset,
@@ -252,7 +336,7 @@ body {
   transform: perspective(1200px) translateZ(20px);
   transform-style: preserve-3d;
   transition: all 0.3s ease;
-  margin: 1.5rem auto; /* match card-container margin for alignment */
+  margin: 0; /* No margin - spacing handled by parent grid */
 }
 
 .list-gradient-panel:hover {
@@ -335,15 +419,178 @@ body {
 
 /* Turquoise metallic buttons to tie orange and teal cards together */
 .btn-turquoise {
-  background-image: linear-gradient(135deg, #0d9488 0%, #14b8a6 40%, #5eead4 60%, #2dd4bf 100%);
-  color: #064e3b;
-  border: 1px solid rgba(13, 148, 136, 0.4);
-  box-shadow: 0 8px 18px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.4);
-  font-weight: 600;
+  background: linear-gradient(145deg, #34d399 0%, #10b981 35%, #059669 70%, #047857 100%);
+  color: #023c32;
+  border: none;
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.35),
+    0 3px 6px rgba(0, 0, 0, 0.2),
+    inset 0 2px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.25),
+    inset 0 1px 1px rgba(255, 255, 255, 0.5);
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.4);
+  font-weight: 700;
+  transform: translateZ(0);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  position: relative;
+  overflow: hidden;
 }
-.btn-turquoise:hover { filter: brightness(1.05); }
-.btn-turquoise:active { filter: brightness(0.98); transform: translateY(1px); }
-.btn-turquoise:disabled { opacity: 0.6; pointer-events: none; }
+.btn-turquoise::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transition: left 0.45s ease;
+}
+
+.btn-turquoise:hover {
+  filter: brightness(1.05);
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.4),
+    0 4px 8px rgba(0, 0, 0, 0.25),
+    inset 0 2px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.2);
+  transform: translateY(-1px);
+}
+
+.btn-turquoise:hover::before {
+  left: 100%;
+}
+
+.btn-turquoise:active {
+  box-shadow:
+    0 3px 6px rgba(0, 0, 0, 0.3),
+    inset 0 3px 4px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transform: translateY(1px);
+  filter: brightness(0.96);
+}
+
+.btn-turquoise:disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.card-input-light {
+  background: linear-gradient(180deg, #ffffff 0%, #f3f4f6 60%, #e5e7eb 100%);
+  color: #1f2937;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  box-shadow:
+    inset 0 2px 4px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+  transition: all 0.18s ease;
+}
+
+.card-input-light::placeholder {
+  color: rgba(71, 85, 105, 0.55);
+}
+
+.card-input-light:focus {
+  border-color: rgba(5, 150, 105, 0.4);
+  box-shadow:
+    0 0 0 2px rgba(45, 212, 191, 0.35),
+    inset 0 2px 4px rgba(15, 23, 42, 0.12);
+}
+
+.gold-button-frame {
+  position: relative;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.25));
+  box-shadow:
+    inset 0 1px 2px rgba(255, 255, 255, 0.12),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.3),
+    0 8px 20px -12px rgba(0, 0, 0, 0.65);
+  margin-bottom: 12px;
+}
+
+.gold-button-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background: linear-gradient(135deg, #b8860b 0%, #f0d27a 40%, #fff3bf 60%, #c49a27 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.gold-card-frame {
+  position: relative;
+  border-radius: 14px;
+  padding: 22px 20px 26px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(0,0,0,0.3));
+  box-shadow:
+    inset 0 1px 2px rgba(255, 255, 255, 0.12),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.35),
+    0 20px 35px -20px rgba(0, 0, 0, 0.65);
+}
+
+.gold-card-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background: linear-gradient(135deg, #b8860b 0%, #f0d27a 40%, #fff3bf 60%, #c49a27 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.gold-stat-board {
+  display: flex;
+  gap: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 16px 30px -18px rgba(0, 0, 0, 0.65);
+  margin-left: auto;
+  width: clamp(280px, calc(50% - 0.75rem), 420px);
+}
+
+.gold-stat-card {
+  flex: 1;
+  position: relative;
+  padding: 14px 18px 16px;
+  background: linear-gradient(135deg, rgba(255, 224, 153, 0.45), rgba(118, 78, 0, 0.75));
+  border: 1px solid rgba(255, 239, 201, 0.35);
+  backdrop-filter: blur(4px);
+  text-align: center;
+}
+
+.gold-stat-card:not(:last-child) {
+  border-right: 1px solid rgba(255, 239, 201, 0.45);
+}
+
+.gold-stat-card .gold-stat-label {
+  display: block;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(37, 23, 0, 0.78);
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+.gold-stat-card .gold-stat-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: #fff9eb;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
 
 /* Metallic orange buttons to match orange card */
 .btn-orange {

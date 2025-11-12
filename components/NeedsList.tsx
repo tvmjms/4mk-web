@@ -17,6 +17,17 @@ type ProcessedNeed = Need & {
   displayTitle?: string
 }
 
+/**
+ * Standardized spacing constants for all list cards:
+ * - Grid gap: gap-3 (12px) - used between items in the grid
+ * - Toolbar to list: mb-3 (12px) - matches grid gap
+ * - List to pagination: mt-3 (12px) - matches grid gap
+ * - Panel padding: 18px 30px 12px 30px (top, right, bottom, left)
+ *   - Top: 18px (matches gold frame inset)
+ *   - Left/Right: 30px (18px frame + 12px content margin)
+ *   - Bottom: 12px (matches grid gap)
+ * - Location/Date/Status: Always on one line with whitespace-nowrap
+ */
 function NeedsList({ 
   pageSize = 5, 
   columns = 2,
@@ -35,7 +46,7 @@ function NeedsList({
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const [query, setQuery] = useState('')
-  const [status, setStatus] = useState<'all' | 'new' | 'help_offered' | 'help_accepted' | 'fulfilled' | 'Help Offered' | 'Help Accepted'>('all')
+  const [status, setStatus] = useState<'all' | 'new' | 'help_offered' | 'help_accepted' | 'fulfilled' | 'Help Offered' | 'Help Accepted' | 'withdrawn' | 'clarifying' | 'return_initiated' | 'returned'>('all')
   const [dateFilter, setDateFilter] = useState<'all' | 'day' | 'week' | 'month' | 'custom'>('all')
   const [customStartDate, setCustomStartDate] = useState<string>('')
   const [customEndDate, setCustomEndDate] = useState<string>('')
@@ -50,6 +61,11 @@ function NeedsList({
       case 'help_accepted':
       case 'help accepted': return 'bg-green-100 text-green-800';
       case 'fulfilled': return 'bg-purple-100 text-purple-800';
+      case 'withdrawn': return 'bg-gray-100 text-gray-800';
+      case 'clarifying': return 'bg-blue-100 text-blue-800';
+      case 'return_initiated': return 'bg-orange-100 text-orange-800';
+      case 'returned': return 'bg-pink-100 text-pink-800';
+      case 'non_reversible': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -59,7 +75,9 @@ function NeedsList({
     const statusLower = status.toLowerCase();
     if (statusLower === 'help_offered' || statusLower === 'help offered') return 'Help Offered';
     if (statusLower === 'help_accepted' || statusLower === 'help accepted') return 'Help Accepted';
-    return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+    if (statusLower === 'return_initiated') return 'Return Initiated';
+    if (statusLower === 'non_reversible') return 'Non-Reversible';
+    return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase().replace('_', ' ');
   };
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
@@ -70,9 +88,14 @@ function NeedsList({
   // Calculate date filter
   const dateFilterISO = useMemo(() => {
     if (dateFilter === 'custom' && customStartDate && customEndDate) {
+      // Fix: Ensure proper date range (start of day to end of day)
+      const start = new Date(customStartDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(customEndDate);
+      end.setHours(23, 59, 59, 999);
       return {
-        start: new Date(customStartDate).toISOString(),
-        end: new Date(customEndDate + 'T23:59:59').toISOString()
+        start: start.toISOString(),
+        end: end.toISOString()
       }
     }
     if (dateFilter === 'all') return null
@@ -81,7 +104,13 @@ function NeedsList({
     if (dateFilter === 'day') ms = 24 * 60 * 60 * 1000
     if (dateFilter === 'week') ms = 7 * 24 * 60 * 60 * 1000
     if (dateFilter === 'month') ms = 30 * 24 * 60 * 60 * 1000
-    return ms ? new Date(now - ms).toISOString() : null
+    // Fix: Use start of day for proper filtering
+    if (ms) {
+      const date = new Date(now - ms);
+      date.setHours(0, 0, 0, 0);
+      return date.toISOString();
+    }
+    return null
   }, [dateFilter, customStartDate, customEndDate])
 
   // Get current user on mount - optimized
@@ -210,7 +239,9 @@ function NeedsList({
         q = q.eq('status', normalizedStatus)
       }
       if (term) {
-        q = q.or(`title.ilike.%${term}%,description.ilike.%${term}%`)
+        // Search in title, description, city, and state (case-insensitive)
+        const searchTerm = term.trim();
+        q = q.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%,state.ilike.%${searchTerm}%`)
       }
       
       // Apply date filter
@@ -264,11 +295,13 @@ function NeedsList({
   const isDashboard = ownerId !== undefined || helperId !== undefined;
   
   // If full page mode or dashboard mode, render without the section wrapper
+  // Standardized spacing: all gaps use gap-3 (12px) for consistency
   if (isFullPage || isDashboard) {
     return (
-      <div className="w-full h-full flex flex-col">
+      <div className="w-full flex flex-col">
         {/* Toolbar: search + status filter + date filters - all in one line */}
-        <div className="mb-4 flex items-center gap-1.5 justify-center flex-wrap">
+        {/* Standardized spacing: mb-3 (12px) matches grid gap */}
+        <div className="mb-3 flex items-center gap-1.5 justify-center flex-wrap">
           <input
             value={query}
             onChange={(e) => { setPage(1); setQuery(e.target.value) }}
@@ -334,11 +367,11 @@ function NeedsList({
           <div className="text-white/90 text-xs">No open needs found.</div>
         )}
 
-        <div className="flex-1 overflow-y-auto">
-          <div 
-            className="grid gap-3"
-            style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
-          >
+        {/* Standardized grid gap: gap-3 (12px) - consistent across all list cards */}
+        <div 
+          className="grid gap-3"
+          style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+        >
             {needs.map(n => {
               const time = n.created_at ? new Date(n.created_at).toLocaleDateString('en-US', { 
                 month: 'short', 
@@ -369,24 +402,25 @@ function NeedsList({
                     </h3>
                   </div>
 
-                  {/* Row 2: Location + Requested time + Status */}
-                  <div className="mt-0.5 text-[8px] text-gray-700 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-                    {n.city && <span>{n.city}</span>}
-                    {time && <span>{time}</span>}
-                    <span className={`px-1 py-0.5 rounded text-[8px] font-medium ${getStatusColor(n.status || 'new')}`}>
+                  {/* Row 2: Location + Requested time + Status - all on one line (standardized layout) */}
+                  {/* Standardized: Always on one line, never wrap - matches gap-3 spacing */}
+                  <div className="mt-0.5 text-[8px] text-gray-700 flex items-center gap-x-1.5 whitespace-nowrap overflow-hidden">
+                    {n.city && <span className="flex-shrink-0">{n.city}</span>}
+                    {time && <span className="flex-shrink-0">{time}</span>}
+                    <span className={`px-1 py-0.5 rounded text-[8px] font-medium flex-shrink-0 ${getStatusColor(n.status || 'new')}`}>
                       {formatStatusDisplay(n.status || 'new')}
                     </span>
                   </div>
                 </div>
               )
             })}
-          </div>
         </div>
 
         {/* Pagination with legend */}
-        <div className="mt-3 flex items-center justify-between gap-1 pt-3 border-t border-white/10">
+        {/* Standardized spacing: mt-3 (12px) matches grid gap - card bottom padding provides additional 12px after pagination */}
+        <div className="mt-3 flex items-center justify-between gap-2 pt-0 border-t border-white/10">
           <div className="flex-1"></div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 flex-shrink-0">
             <button
               className="px-1.5 py-0.5 rounded text-xs btn-silver disabled:opacity-50"
               onClick={() => setPage(p => Math.max(1, p - 1))}
@@ -406,7 +440,7 @@ function NeedsList({
             </button>
           </div>
           <div className="flex-1 flex justify-end">
-            <span className="text-yellow-400 text-[10px] italic">* indicates your need</span>
+            <span className="text-yellow-400 text-[10px] italic whitespace-nowrap">* indicates your need</span>
           </div>
         </div>
       </div>
@@ -416,7 +450,7 @@ function NeedsList({
   return (
     <section 
       aria-label="All Needs" 
-      className="w-full h-[315px] list-gradient-panel relative cursor-pointer"
+      className="w-full min-h-[320px] list-gradient-panel relative cursor-pointer"
       onClick={(e) => {
         // Only navigate if clicking on the card background, not on interactive elements
         const target = e.target as HTMLElement;
@@ -446,9 +480,10 @@ function NeedsList({
       {/* Removed card-logo-shadow as requested */}
       <div className="card-logo-main">All Needs</div>
 
-  <div className="max-w-2xl mx-auto relative z-10 h-full flex flex-col pt-10 px-3">
+  <div className="w-full relative z-10 flex flex-col pt-10">
         {/* Toolbar: search + status filter + date filters - all in one line */}
-        <div className="mb-2 flex items-center gap-2 justify-center flex-wrap mt-2">
+        {/* Standardized spacing: mb-3 (12px) matches grid gap */}
+        <div className="mb-3 flex items-center gap-2 justify-center flex-wrap">
             <input
               value={query}
               onChange={(e) => { setPage(1); setQuery(e.target.value) }}
@@ -511,10 +546,12 @@ function NeedsList({
         <div className="text-red-200 text-xs">Error: {error}</div>
       )}
       {!loading && !error && needs.length === 0 && (
-        <div className="text-white/90 text-xs">No open needs found.</div>
+        <div className="text-white/90 text-xs py-4">No open needs found.</div>
       )}
 
-  <div className="flex-1 overflow-hidden">
+  {!loading && !error && needs.length > 0 && (
+    <div className="flex flex-col">
+    {/* Standardized grid gap: gap-3 (12px) - consistent across all list cards */}
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {needs.map(n => {
           const time = n.created_at ? new Date(n.created_at).toLocaleDateString('en-US', { 
@@ -546,11 +583,12 @@ function NeedsList({
                 </h3>
               </div>
 
-              {/* Row 2: Location + Requested time + Status */}
-              <div className="mt-0.5 text-[8px] text-gray-700 flex flex-wrap items-center gap-x-2 gap-y-1">
-                {n.city && <span>{n.city}</span>}
-                {time && <span>{time}</span>}
-                <span className={`px-1 py-0.5 rounded text-[8px] font-medium ${getStatusColor(n.status || 'new')}`}>
+              {/* Row 2: Location + Requested time + Status - all on one line (standardized layout) */}
+              {/* Standardized: Always on one line, never wrap - matches gap-3 spacing */}
+              <div className="mt-0.5 text-[8px] text-gray-700 flex items-center gap-x-1.5 whitespace-nowrap overflow-hidden">
+                {n.city && <span className="flex-shrink-0">{n.city}</span>}
+                {time && <span className="flex-shrink-0">{time}</span>}
+                <span className={`px-1 py-0.5 rounded text-[8px] font-medium flex-shrink-0 ${getStatusColor(n.status || 'new')}`}>
                   {formatStatusDisplay(n.status || 'new')}
                 </span>
               </div>
@@ -558,10 +596,12 @@ function NeedsList({
           )
         })}
     </div>
-    {/* Inline pagination with legend */}
-    <div className="mt-2 flex items-center justify-between gap-1" style={{ marginBottom: '12px' }}>
+    
+    {/* Pagination with legend - fixed at bottom, one line on full screen */}
+    {/* Standardized spacing: mt-3 (12px) matches grid gap */}
+    <div className="mt-3 flex items-center justify-between gap-2 border-t border-white/10 pt-0">
       <div className="flex-1"></div>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 flex-shrink-0">
         <button
           className="px-1.5 py-0.5 rounded text-[10px] btn-silver disabled:opacity-50"
           onClick={() => setPage(p => Math.max(1, p - 1))}
@@ -570,7 +610,7 @@ function NeedsList({
         >
           ◀
         </button>
-        <span className="text-white/90 text-xs font-medium">{total ? page : 0}</span>
+        <span className="text-white/90 text-xs font-medium px-1.5">{total ? page : 0}</span>
         <button
           className="px-1.5 py-0.5 rounded text-[10px] btn-silver disabled:opacity-50"
           onClick={() => setPage(p => Math.min(totalPages, p + 1))}
@@ -581,10 +621,11 @@ function NeedsList({
         </button>
       </div>
       <div className="flex-1 flex justify-end">
-        <span className="text-yellow-400 text-[8px] italic">* indicates your need</span>
+        <span className="text-yellow-400 text-[8px] italic whitespace-nowrap">* indicates your need</span>
       </div>
     </div>
   </div>
+  )}
 
       {/* Pagination controls (hidden, replaced by inline above) */}
   <div className="hidden">

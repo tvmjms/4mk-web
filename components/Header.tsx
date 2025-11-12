@@ -2,13 +2,14 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useSession, useSupabaseClient } from "@supabase/auth-helpers-react";
-import { useMemo, useCallback, useState } from "react";
+import { useMemo, useCallback, useState, useEffect } from "react";
 
 export default function Header() {
   const session = useSession();
   const supabase = useSupabaseClient();
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [email, setEmail] = useState<string | null>(session?.user?.email ?? null);
   
   // Memoize login link to prevent unnecessary re-renders
   const loginWithRedirect = useMemo(() => {
@@ -26,6 +27,35 @@ export default function Header() {
       setIsLoggingOut(false);
     }
   }, [supabase, router]);
+
+  useEffect(() => {
+    setEmail(session?.user?.email ?? null);
+  }, [session]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadSession = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (isMounted) {
+        setEmail(data.user?.email ?? null);
+      }
+    };
+
+    loadSession();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      if (isMounted) {
+        setEmail(newSession?.user?.email ?? null);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
 
   return (
     <header className="bg-turquoise-400 px-4 py-1 header-double-gold relative">
@@ -47,7 +77,7 @@ export default function Header() {
           <Link href="/dashboard" className="text-white hover:text-white/80 font-semibold">
             Dashboard
           </Link>
-          {session ? (
+          {email ? (
             <>
               <button 
                 onClick={handleLogout} 
@@ -58,7 +88,7 @@ export default function Header() {
               >
                 {isLoggingOut ? 'Logging out...' : 'Logout'}
               </button>
-              <span className="text-white/90 text-[10px] font-medium">{session.user?.email}</span>
+              <span className="text-white/90 text-[10px] font-medium">{email}</span>
             </>
           ) : (
             <Link href={loginWithRedirect} className="text-white hover:text-white/80 font-semibold">

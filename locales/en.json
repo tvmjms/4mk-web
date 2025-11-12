@@ -1,0 +1,29 @@
+{
+  "offer": {
+    "help": "Offer Help",
+    "type": "Type of Help",
+    "submit": "Submit Offer",
+    "withdraw": "Withdraw Offer",
+    "return": "Initiate Return",
+    "clarify": "Need Clarification",
+    "resume": "Resume"
+  },
+  "status": {
+    "clarifying": "Clarifying - Questions or additional information needed"
+  },
+  "report": {
+    "abuse": "Report"
+  },
+  "disclaimer": {
+    "text": "4MK only tracks communications through its website or app. External help or offline exchanges are not monitored or supported."
+  },
+  "common": {
+    "cancel": "Cancel",
+    "submit": "Submit",
+    "loading": "Loading..."
+  }
+}
+
+
+
+

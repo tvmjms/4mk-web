@@ -7,7 +7,7 @@ import { validateInput, rateLimit, compose } from '@/lib/middleware/validation';
 
 type OfferActionBody = {
   fulfillmentId?: string;
-  action?: 'accept' | 'decline';
+  action?: 'accept' | 'decline' | 'clarify' | 'resume';
   reason?: string;
 };
 
@@ -42,28 +42,71 @@ async function handleOfferAction(req: NextApiRequest, res: NextApiResponse) {
       return res.status(404).json({ error: "Fulfillment not found" });
     }
 
-    // Only need owner can accept/decline
-    if ((fulfillment.needs as any)?.owner_id !== user.id) {
-      return res.status(403).json({ error: "Not authorized to modify this offer" });
+    // Handle different actions with different authorization
+    let newStatus: string;
+    let updateData: any = {};
+    let canPerformAction = false;
+
+    if (action === 'accept' || action === 'decline') {
+      // Only need owner can accept/decline
+      if ((fulfillment.needs as any)?.owner_id !== user.id) {
+        return res.status(403).json({ error: "Not authorized to modify this offer" });
+      }
+      // Can only accept/decline proposed offers
+      if (fulfillment.status !== 'proposed') {
+        return res.status(400).json({ error: `Cannot ${action} ${fulfillment.status} offers` });
+      }
+      newStatus = action === 'accept' ? 'accepted' : 'declined';
+      if (action === 'accept') {
+        updateData.accepted_at = new Date().toISOString();
+      }
+      if (reason) {
+        updateData.message = `${fulfillment.message || ''}\n\nRequester ${action}ed: ${reason}`.trim();
+      }
+      canPerformAction = true;
+    } else if (action === 'clarify') {
+      // Both requester and helper can set to clarifying
+      const isRequester = (fulfillment.needs as any)?.owner_id === user.id;
+      const isHelper = fulfillment.helper_id === user.id;
+      if (!isRequester && !isHelper) {
+        return res.status(403).json({ error: "Not authorized to modify this offer" });
+      }
+      // Can only clarify accepted offers
+      if (fulfillment.status !== 'accepted') {
+        return res.status(400).json({ error: `Cannot clarify ${fulfillment.status} offers. Only accepted offers can be set to clarifying.` });
+      }
+      newStatus = 'clarifying';
+      if (reason) {
+        const role = isRequester ? 'Requester' : 'Helper';
+        updateData.message = `${fulfillment.message || ''}\n\n${role} marked as clarifying: ${reason}`.trim();
+      }
+      canPerformAction = true;
+    } else if (action === 'resume') {
+      // Both requester and helper can resume from clarifying
+      const isRequester = (fulfillment.needs as any)?.owner_id === user.id;
+      const isHelper = fulfillment.helper_id === user.id;
+      if (!isRequester && !isHelper) {
+        return res.status(403).json({ error: "Not authorized to modify this offer" });
+      }
+      // Can only resume from clarifying status
+      if (fulfillment.status !== 'clarifying') {
+        return res.status(400).json({ error: `Cannot resume ${fulfillment.status} offers. Only clarifying offers can be resumed.` });
+      }
+      newStatus = 'accepted';
+      if (reason) {
+        const role = isRequester ? 'Requester' : 'Helper';
+        updateData.message = `${fulfillment.message || ''}\n\n${role} resumed: ${reason}`.trim();
+      }
+      canPerformAction = true;
+    } else {
+      return res.status(400).json({ error: "Invalid action" });
     }
 
-    // Can only accept/decline proposed offers
-    if (fulfillment.status !== 'proposed') {
-      return res.status(400).json({ error: `Cannot ${action} ${fulfillment.status} offers` });
+    if (!canPerformAction) {
+      return res.status(400).json({ error: "Cannot perform this action" });
     }
 
-    const newStatus = action === 'accept' ? 'accepted' : 'declined';
-    const updateData: any = { 
-      status: newStatus,
-    };
-
-    if (action === 'accept') {
-      updateData.accepted_at = new Date().toISOString();
-    }
-
-    if (reason) {
-      updateData.message = `${fulfillment.message}\n\nRequester ${action}ed: ${reason}`;
-    }
+    updateData.status = newStatus;
 
     // Update fulfillment status
     const { error: updateErr } = await admin
@@ -89,17 +132,20 @@ async function handleOfferAction(req: NextApiRequest, res: NextApiResponse) {
       }
     }
 
-    // Get helper email to notify them
+    // Send notifications based on action
     const { data: helper } = await admin.auth.admin.getUserById(fulfillment.helper_id);
+    const { data: requester } = await admin.auth.admin.getUserById((fulfillment.needs as any)?.owner_id);
     
-    if (helper.user?.email) {
-      try {
-        const subject = action === 'accept' 
-          ? `Your offer for "${(fulfillment.needs as any)?.title}" was accepted! - 4MK`
-          : `Update on your offer for "${(fulfillment.needs as any)?.title}" - 4MK`;
+    if (action === 'accept' || action === 'decline') {
+      // Notify helper
+      if (helper.user?.email) {
+        try {
+          const subject = action === 'accept' 
+            ? `Your offer for "${(fulfillment.needs as any)?.title}" was accepted! - 4MK`
+            : `Update on your offer for "${(fulfillment.needs as any)?.title}" - 4MK`;
 
-        const emailText = action === 'accept'
-          ? `Great news! Your offer to help with "${(fulfillment.needs as any)?.title}" has been accepted!
+          const emailText = action === 'accept'
+            ? `Great news! Your offer to help with "${(fulfillment.needs as any)?.title}" has been accepted!
 
 ${reason ? `Requester's message: ${reason}\n` : ''}
 You can now coordinate directly via email to share codes, pickup details, or arrangements.
@@ -107,23 +153,57 @@ You can now coordinate directly via email to share codes, pickup details, or arr
 When the help is completed, the requester will mark it as fulfilled in the system.
 
 Thank you for helping your community through 4MK!`
-          : `Your offer to help with "${(fulfillment.needs as any)?.title}" was declined.
+            : `Your offer to help with "${(fulfillment.needs as any)?.title}" was declined.
 
 ${reason ? `Reason: ${reason}\n` : ''}
 Thank you for your willingness to help! There are many other opportunities to make a difference in your community.
 
 Keep helping through 4MK!`;
 
-        await sendEmail({
-          to: helper.user.email,
-          subject,
-          text: emailText,
-        });
-        
-        logger.debug(`${action} notification sent to helper:`, helper.user.email);
-      } catch (emailErr) {
-        logger.error("Email send failed:", emailErr);
-        // Non-fatal error - don't fail the API call
+          await sendEmail({
+            to: helper.user.email,
+            subject,
+            text: emailText,
+          });
+          
+          logger.debug(`${action} notification sent to helper:`, helper.user.email);
+        } catch (emailErr) {
+          logger.error("Email send failed:", emailErr);
+        }
+      }
+    } else if (action === 'clarify' || action === 'resume') {
+      // Notify both parties
+      const isRequesterAction = (fulfillment.needs as any)?.owner_id === user.id;
+      const otherParty = isRequesterAction ? helper : requester;
+      
+      if (otherParty?.user?.email) {
+        try {
+          const subject = action === 'clarify'
+            ? `Clarification needed for "${(fulfillment.needs as any)?.title}" - 4MK`
+            : `Offer resumed for "${(fulfillment.needs as any)?.title}" - 4MK`;
+
+          const emailText = action === 'clarify'
+            ? `The offer for "${(fulfillment.needs as any)?.title}" has been marked as needing clarification.
+
+${reason ? `Message: ${reason}\n` : ''}
+Please check the platform to respond to questions or provide additional information.
+
+Thank you for using 4MK!`
+            : `The offer for "${(fulfillment.needs as any)?.title}" has been resumed after clarification.
+
+${reason ? `Message: ${reason}\n` : ''}
+You can continue coordinating through the platform.
+
+Thank you for using 4MK!`;
+
+          await sendEmail({
+            to: otherParty.user.email,
+            subject,
+            text: emailText,
+          });
+        } catch (emailErr) {
+          logger.error("Email send failed:", emailErr);
+        }
       }
     }
 
@@ -138,7 +218,7 @@ Keep helping through 4MK!`;
 const validationRules = [
   { field: 'fulfillmentId', required: true, type: 'string' as const },
   { field: 'action', required: true, type: 'string' as const },
-  { field: 'reason', required: false, type: 'string' as const, maxLength: 200 }
+  { field: 'reason', required: false, type: 'string' as const, maxLength: 500 }
 ];
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

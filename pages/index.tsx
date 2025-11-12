@@ -38,7 +38,7 @@ export default function Home() {
           </div>
         </div>
         
-        <div className="mx-auto max-w-6xl py-1 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+        <div className="mx-auto max-w-6xl py-1 px-6 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
           {/* Left: Parent card hero */}
           <div className="flex justify-center items-center parent-child-connector">
             <div className="card-container parent-card w-full max-w-2xl h-[320px]">
@@ -48,7 +48,7 @@ export default function Home() {
               <div className="card-logo-main">4MK</div>
 
               <div className="max-w-2xl mx-auto relative z-10">
-                <h1 className="text-lg md:text-xl font-extrabold text-white mb-3 text-center">
+                <h1 className="text-lg md:text-xl font-extrabold text-white mb-6 text-center">
                   ForMyKin
                 </h1>
                 <p className="text-white text-center mb-6 text-xs">
@@ -57,27 +57,21 @@ export default function Home() {
 
                 <div className="flex items-center justify-center gap-3 mt-6">
                   <Link
-                    href="/needs/create"
+                    href={email ? "/needs/create" : "/login?next=/needs/create"}
                     className="py-2 px-4 rounded-md text-center font-semibold text-xs btn-turquoise whitespace-nowrap"
                   >
                     Create Need
                   </Link>
 
                   <Link
-                    href="/dashboard"
+                    href={email ? "/dashboard" : "/login?next=/dashboard"}
                     className="py-2 px-4 rounded-md text-center font-semibold text-xs btn-turquoise whitespace-nowrap"
                   >
                     My Dashboard
                   </Link>
                 </div>
 
-                {!email && (
-                  <p className="mt-4 text-xs text-white text-center opacity-80">
-                    You&rsquo;re not signed in yet. Visit your Dashboard to sign in.
-                  </p>
-                )}
-
-                <div className="mt-8 text-[10px] tracking-widest text-white text-center opacity-70">
+                <div className="mt-6 text-[10px] tracking-widest text-white text-center opacity-70">
                   EMPOWERING CONNECTIONS
                   <div className="mx-auto mt-2 h-0.5 w-32 bg-white opacity-30 rounded-full" />
                 </div>
@@ -86,7 +80,7 @@ export default function Home() {
           </div>
 
           {/* Right: Child card - All Needs with pagination */}
-          <div className="flex justify-center items-center w-full max-w-4xl mx-auto">
+          <div className="flex justify-center items-center w-full max-w-4xl">
             <div className="child-card w-full">
               <NeedsList pageSize={6} />
             </div>

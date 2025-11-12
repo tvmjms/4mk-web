@@ -12,27 +12,37 @@ interface OfferFormProps {
 
 export default function EnhancedOfferForm({ needId, needTitle, onClose, onSuccess }: OfferFormProps) {
   const [formData, setFormData] = useState({
-    offerType: 'general' as 'general' | 'digital_service' | 'store_pickup' | 'service_booking',
+    offerType: 'voucher' as 'voucher' | 'delivery' | 'pickup' | 'transport_credit' | 'shelter_credit' | 'general',
     message: '',
     offerDescription: '',
-    contactMethod: 'email' as 'email' | 'platform_message'
+    contactMethod: 'email' as 'email' | 'platform_message',
+    maxCashlessAmount: '',
+    orderId: '',
+    deliveryPreferences: '',
+    brandPreference: '',
+    caseManagerInfo: ''
   });
   const [mediaFiles, setMediaFiles] = useState<any[]>([]);
+  const [proofUrl, setProofUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const offerTypeLabels = {
-    general: 'General Help',
-    digital_service: 'Digital Service (Codes/Orders)',
-    store_pickup: 'Store Pickup',
-    service_booking: 'Service Booking'
+    voucher: 'Gift Card / Voucher',
+    delivery: 'Online Delivery',
+    pickup: 'Retail Pickup',
+    transport_credit: 'Transport Credit (Train/Bus)',
+    shelter_credit: 'Shelter Aid',
+    general: 'General Help'
   };
 
   const offerTypeDescriptions = {
-    general: 'Advice, explanations, or information help',
-    digital_service: 'Order online services, provide pickup codes (for requester pickup)',
-    store_pickup: 'Buy items at store, arrange requester pickup with confirmation',
-    service_booking: 'Make appointments/reservations in your name (for requester)'
+    voucher: 'Gift cards or vouchers (voidable/reassignable if unused)',
+    delivery: 'Online delivery services (intercept or refund possible)',
+    pickup: 'Store pickup with confirmation (cancel or return possible)',
+    transport_credit: 'Train/bus credits for travel assistance',
+    shelter_credit: 'Shelter aid (processed only if case data verified)',
+    general: 'Advice, explanations, or information help'
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -48,6 +58,26 @@ export default function EnhancedOfferForm({ needId, needTitle, onClose, onSucces
         throw new Error('Please log in to submit an offer');
       }
       
+      // Upload proof file if provided
+      let uploadedProofUrl = proofUrl;
+      if (mediaFiles.length > 0 && !proofUrl) {
+        // Upload the first file as proof
+        const proofFile = mediaFiles[0];
+        if (proofFile.uploaded_url) {
+          uploadedProofUrl = proofFile.uploaded_url;
+        }
+      }
+
+      // Validate max cashless amount
+      let maxCashlessAmount: number | null = null;
+      if (formData.maxCashlessAmount) {
+        const amount = Number(formData.maxCashlessAmount);
+        if (isNaN(amount) || amount < 0 || amount > 100) {
+          throw new Error('Max cashless amount must be between $0 and $100');
+        }
+        maxCashlessAmount = amount;
+      }
+
       const response = await fetch('/api/fulfillment', {
         method: 'POST',
         headers: {
@@ -59,7 +89,13 @@ export default function EnhancedOfferForm({ needId, needTitle, onClose, onSucces
           message: formData.message,
           offerType: formData.offerType,
           offerDescription: formData.offerDescription,
-          contactMethod: formData.contactMethod
+          contactMethod: formData.contactMethod,
+          maxCashlessAmount,
+          orderId: formData.orderId || null,
+          proofUrl: uploadedProofUrl,
+          deliveryPreferences: formData.deliveryPreferences || null,
+          brandPreference: formData.brandPreference || null,
+          caseManagerInfo: formData.caseManagerInfo || null
         })
       });
 
@@ -123,6 +159,65 @@ export default function EnhancedOfferForm({ needId, needTitle, onClose, onSucces
               </div>
             </div>
 
+            {/* Max Cashless Amount */}
+            {(formData.offerType === 'voucher' || formData.offerType === 'delivery' || formData.offerType === 'pickup' || formData.offerType === 'transport_credit') && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Max Cashless Amount (USD) *
+                  <span className="text-xs text-slate-500 ml-1">(Max $100 per transaction)</span>
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value={formData.maxCashlessAmount}
+                  onChange={(e) => setFormData({ ...formData, maxCashlessAmount: e.target.value })}
+                  placeholder="0.00"
+                  className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-turquoise-500 focus:border-turquoise-500"
+                  required
+                />
+                <p className="text-xs text-slate-500 mt-1">Maximum $100 per transaction per 4MK policy</p>
+              </div>
+            )}
+
+            {/* Order ID */}
+            {(formData.offerType === 'delivery' || formData.offerType === 'pickup') && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Order ID / Transaction Reference
+                </label>
+                <input
+                  type="text"
+                  value={formData.orderId}
+                  onChange={(e) => setFormData({ ...formData, orderId: e.target.value })}
+                  placeholder="e.g., ORD-12345 or confirmation code"
+                  className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-turquoise-500 focus:border-turquoise-500"
+                />
+              </div>
+            )}
+
+            {/* Proof Upload */}
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-2">
+                Upload Proof (Optional)
+              </label>
+              <div className="text-xs text-blue-600 mb-2">
+                💡 Share photos of receipts, order confirmations, or proof of purchase
+              </div>
+              <MediaUpload 
+                onMediaUpdate={(files) => {
+                  setMediaFiles(files);
+                  // Set proof URL from first uploaded file
+                  if (files.length > 0 && files[0].uploaded_url) {
+                    setProofUrl(files[0].uploaded_url);
+                  }
+                }}
+                maxFiles={1}
+                disabled={isSubmitting}
+              />
+            </div>
+
             {/* Offer Description for non-general types */}
             {formData.offerType !== 'general' && (
               <div>
@@ -133,16 +228,69 @@ export default function EnhancedOfferForm({ needId, needTitle, onClose, onSucces
                   value={formData.offerDescription}
                   onChange={(e) => setFormData({ ...formData, offerDescription: e.target.value })}
                   placeholder={
-                    formData.offerType === 'digital_service' 
+                    formData.offerType === 'voucher'
+                      ? 'e.g., "I can provide a $50 Amazon gift card"'
+                      : formData.offerType === 'delivery'
                       ? 'e.g., "I can order DoorDash and send you the pickup code via email"'
-                      : formData.offerType === 'store_pickup'
+                      : formData.offerType === 'pickup'
                       ? 'e.g., "I can buy groceries at Walmart and arrange pickup with confirmation number"'
-                      : 'e.g., "I can make a doctor appointment in your name and send details"'
+                      : formData.offerType === 'transport_credit'
+                      ? 'e.g., "I can provide train/bus credits for your travel"'
+                      : 'e.g., "I can provide shelter assistance"'
                   }
                   className="w-full p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-turquoise-500 focus:border-turquoise-500"
                   rows={3}
                   required
                 />
+              </div>
+            )}
+
+            {/* Delivery Preferences (Requester Information) */}
+            {(formData.offerType === 'delivery' || formData.offerType === 'pickup') && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Delivery Preferences (Optional)
+                </label>
+                <textarea
+                  value={formData.deliveryPreferences}
+                  onChange={(e) => setFormData({ ...formData, deliveryPreferences: e.target.value })}
+                  placeholder="e.g., Preferred delivery time, special instructions, dietary restrictions"
+                  className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-turquoise-500 focus:border-turquoise-500"
+                  rows={2}
+                />
+              </div>
+            )}
+
+            {/* Brand Preference */}
+            {(formData.offerType === 'voucher' || formData.offerType === 'pickup') && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Brand Preference (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={formData.brandPreference}
+                  onChange={(e) => setFormData({ ...formData, brandPreference: e.target.value })}
+                  placeholder="e.g., Walmart, Target, Amazon"
+                  className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-turquoise-500 focus:border-turquoise-500"
+                />
+              </div>
+            )}
+
+            {/* Case Manager Info (for shelter aid) */}
+            {formData.offerType === 'shelter_credit' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Case Manager Information (Optional)
+                </label>
+                <textarea
+                  value={formData.caseManagerInfo}
+                  onChange={(e) => setFormData({ ...formData, caseManagerInfo: e.target.value })}
+                  placeholder="Case manager name, contact info, or verification details"
+                  className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-turquoise-500 focus:border-turquoise-500"
+                  rows={2}
+                />
+                <p className="text-xs text-slate-500 mt-1">Shelter aid is processed only if case data is verified</p>
               </div>
             )}
 
@@ -187,20 +335,6 @@ export default function EnhancedOfferForm({ needId, needTitle, onClose, onSucces
               </div>
             </div>
 
-            {/* Media Upload */}
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-2">
-                Attach Photos or Documents (Optional)
-              </label>
-              <div className="text-xs text-blue-600 mb-2">
-                💡 Share photos of items you can provide, receipts, or helpful documents
-              </div>
-              <MediaUpload 
-                onMediaUpdate={setMediaFiles}
-                maxFiles={3}
-                disabled={isSubmitting}
-              />
-            </div>
 
             {/* Legal Disclaimers */}
             <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-md text-xs">

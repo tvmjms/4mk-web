@@ -183,6 +183,12 @@ export default function NewNeedPage() {
     e.preventDefault();
     setErr(null);
 
+    // Validate required fields: state and city are mandatory
+    if (!state || !city) {
+      setErr("State and City are required fields.");
+      return;
+    }
+
     // 🔍 DEBUG: Track event details
     console.log('🎯 SUBMISSION EVENT DETECTED:', {
       timestamp: new Date().toISOString(),
@@ -303,7 +309,13 @@ export default function NewNeedPage() {
       whatsapp_id: whatsappId.trim() || null,
       provider: provider.trim() || null,
       status: 'new', // Required by database constraint
-      images: uploadedFiles.map(f => f.url) // File URLs from Supabase Storage
+      // Send attachments in new format (also support legacy images for backward compatibility)
+      attachments: uploadedFiles.map(f => ({
+        url: f.url,
+        type: f.type || 'image',
+        name: f.name || 'attachment'
+      })),
+      images: uploadedFiles.map(f => f.url) // Legacy format for backward compatibility
     };
 
     // Try using API route to bypass any client-side issues
@@ -636,14 +648,14 @@ export default function NewNeedPage() {
       
       // For images: compress for sustainability
       if (isImage) {
-        const options = {
-          maxSizeMB: 0.5,          // max 500KB
-          maxWidthOrHeight: 800,    // max 800px
-          useWebWorker: true,
-          fileType: 'image/jpeg'   // convert to JPEG for better compression
-        };
-        
-        console.log('Compressing image...', { originalSize: (file.size / 1024).toFixed(2) + 'KB' });
+      const options = {
+        maxSizeMB: 0.5,          // max 500KB
+        maxWidthOrHeight: 800,    // max 800px
+        useWebWorker: true,
+        fileType: 'image/jpeg'   // convert to JPEG for better compression
+      };
+      
+      console.log('Compressing image...', { originalSize: (file.size / 1024).toFixed(2) + 'KB' });
         fileToUpload = await imageCompression(file, options);
         console.log('Compressed image:', { compressedSize: (fileToUpload.size / 1024).toFixed(2) + 'KB' });
       }
@@ -660,17 +672,37 @@ export default function NewNeedPage() {
       
       // 🛡️ MODERATE FILE/IMAGE before uploading (FREE OpenAI Moderation API)
       console.log('Moderating file for inappropriate content...', { type: file.type, name: file.name });
-      const moderationResponse = await fetch('/api/moderate-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          imageData: fileData,
-          fileName: file.name,
-          fileType: file.type
-        })
-      });
       
-      const moderationResult = await moderationResponse.json();
+      let moderationResult;
+      try {
+        const moderationResponse = await fetch('/api/moderate-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            imageData: fileData,
+            fileName: file.name,
+            fileType: file.type
+          })
+        });
+        
+        if (!moderationResponse.ok) {
+          throw new Error(`Moderation API returned status ${moderationResponse.status}`);
+        }
+        
+        moderationResult = await moderationResponse.json();
+      } catch (fetchError: any) {
+        console.error('Error calling moderation API:', fetchError);
+        // Show clear error message and block upload for safety
+        setErr(
+          `⚠️ Unable to verify file safety: ${fetchError.message || 'Moderation service unavailable'}.\n\n` +
+          `Please check your connection and try again. If the problem persists, the file may be too large or the moderation service may be temporarily unavailable.`
+        );
+        setUploadingFile(false);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        return;
+      }
       
       if (moderationResult.flagged || !moderationResult.approved) {
         // File contains inappropriate content - show error and abort upload
@@ -886,12 +918,15 @@ export default function NewNeedPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block font-medium text-slate-600 mb-0.5 text-[10px]">State</label>
+                      <label className="block font-medium text-slate-600 mb-0.5 text-[10px]">
+                        State <span className="text-red-500">*</span>
+                      </label>
                       <select
                         value={state}
                         onChange={(e) => handleStateChange(e.target.value)}
                         className="w-full px-1 py-0.5 rounded border border-slate-300 text-xs focus:border-turquoise-400"
                         disabled={isSubmitting || !!titleModerationError || !!descriptionModerationError}
+                        required
                       >
                         <option value="">Select State</option>
                         {Object.keys(usStatesAndCities).map((stateCode) => (
@@ -902,12 +937,15 @@ export default function NewNeedPage() {
                       </select>
                     </div>
                     <div>
-                      <label className="block font-medium text-slate-600 mb-0.5 text-[10px]">City</label>
+                      <label className="block font-medium text-slate-600 mb-0.5 text-[10px]">
+                        City <span className="text-red-500">*</span>
+                      </label>
                       <select
                         value={city}
                         onChange={(e) => setCity(e.target.value)}
                         className="w-full px-1 py-0.5 rounded border border-slate-300 text-xs focus:border-turquoise-400"
                         disabled={!state || isSubmitting || !!titleModerationError || !!descriptionModerationError}
+                        required
                       >
                         <option value="">
                           {state ? "Select City" : "Select State First"}
@@ -980,11 +1018,11 @@ export default function NewNeedPage() {
                         return (
                           <div key={file.id} className="relative group">
                             {file.type === 'image' ? (
-                              <img
+                          <img
                                 src={file.url}
-                                alt="Upload preview"
-                                className="w-full h-20 object-cover rounded border border-slate-200"
-                              />
+                            alt="Upload preview"
+                            className="w-full h-20 object-cover rounded border border-slate-200"
+                          />
                             ) : (
                               <div className="w-full h-20 bg-slate-100 rounded border border-slate-200 flex items-center justify-center">
                                 <div className="text-center">
@@ -995,15 +1033,15 @@ export default function NewNeedPage() {
                                 </div>
                               </div>
                             )}
-                            <button
-                              type="button"
+                          <button
+                            type="button"
                               onClick={() => removeFile(file.id)}
-                              className="absolute top-0.5 right-0.5 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold hover:bg-red-600 transition-colors opacity-90 hover:opacity-100"
+                            className="absolute top-0.5 right-0.5 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold hover:bg-red-600 transition-colors opacity-90 hover:opacity-100"
                               title="Remove file"
-                            >
-                              ×
-                            </button>
-                          </div>
+                          >
+                            ×
+                          </button>
+                        </div>
                         );
                       })}
                     </div>

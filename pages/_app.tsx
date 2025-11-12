@@ -8,6 +8,7 @@ import "@/styles/globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 
 export default function MyApp({ Component, pageProps }: AppProps) {
   const [supabase] = useState(() => createPagesBrowserClient());
@@ -48,18 +49,20 @@ export default function MyApp({ Component, pageProps }: AppProps) {
 
   return (
     <ErrorBoundary>
-      <SessionContextProvider
-        supabaseClient={supabase}
-        initialSession={pageProps.initialSession}
-      >
-        <div className="min-h-screen flex flex-col">
-          <Header />
-          <main className="flex-1">
-            <Component {...pageProps} />
-          </main>
-          <Footer />
-        </div>
-      </SessionContextProvider>
+      <LanguageProvider>
+        <SessionContextProvider
+          supabaseClient={supabase}
+          initialSession={pageProps.initialSession}
+        >
+          <div className="min-h-screen flex flex-col">
+            <Header />
+            <main className="flex-1">
+              <Component {...pageProps} />
+            </main>
+            <Footer />
+          </div>
+        </SessionContextProvider>
+      </LanguageProvider>
     </ErrorBoundary>
   );
 }

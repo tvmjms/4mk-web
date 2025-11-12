@@ -5,6 +5,8 @@ import { supabase } from "@/lib/supabase";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import EnhancedOfferForm from "@/components/EnhancedOfferForm";
 import NeedComments from "@/components/NeedComments";
+import ReportAbuseButton from "@/components/ReportAbuseButton";
+import AttachmentViewer from "@/components/AttachmentViewer";
 
 // Utility function to format date nicely
 const formatDateTime = (date: Date) => {
@@ -49,6 +51,8 @@ type Need = {
   contact_phone_e164?: string | null;
   whatsapp_id?: string | null;
   status?: string;
+  attachments?: any;
+  attachment_count?: number;
 };
 
 export default function NeedDetail() {
@@ -62,6 +66,7 @@ export default function NeedDetail() {
   const [isOwner, setIsOwner] = useState(false);
   const [hasExistingOffer, setHasExistingOffer] = useState(false);
   const [activeFulfillmentId, setActiveFulfillmentId] = useState<string | null>(null);
+  const [activeFulfillmentStatus, setActiveFulfillmentStatus] = useState<string | null>(null);
   const [showOfferForm, setShowOfferForm] = useState(false);
   
   // Email/SMS states for owner receipt functionality
@@ -70,12 +75,37 @@ export default function NeedDetail() {
   const [emailSent, setEmailSent] = useState(false);
   const [smsSent, setSmsSent] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [summarizedDescription, setSummarizedDescription] = useState<string | null>(null);
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [showFullDescription, setShowFullDescription] = useState(false);
 
   useEffect(() => {
     if (id && user && isAuthenticated) {
       fetchNeedAndUser();
     }
   }, [id, user, isAuthenticated]);
+
+  // Summarize long descriptions
+  useEffect(() => {
+    if (need?.description && need.description.length > 300 && !showFullDescription) {
+      setIsSummarizing(true);
+      fetch('/api/summarize-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: need.description, maxLength: 200 })
+      })
+        .then(res => res.json())
+        .then(data => {
+          setSummarizedDescription(data.summary);
+          setIsSummarizing(false);
+        })
+        .catch(() => {
+          setIsSummarizing(false);
+        });
+    } else {
+      setSummarizedDescription(null);
+    }
+  }, [need?.description, showFullDescription]);
 
   async function fetchNeedAndUser() {
     if (!user || !isAuthenticated) return;
@@ -108,31 +138,33 @@ export default function NeedDetail() {
         .select("id, status")
         .eq("need_id", id)
         .eq("helper_id", user.id)
-        .in("status", ["proposed", "accepted"])
+        .in("status", ["proposed", "accepted", "clarifying"])
         .maybeSingle();
 
       setHasExistingOffer(!!existingOffer);
       
-      // Use the user's active fulfillment (proposed or accepted) for comments
+      // Use the user's active fulfillment (proposed, accepted, or clarifying) for comments
       // This creates the connection-based chat
       if (existingOffer) {
         setActiveFulfillmentId(existingOffer.id);
+        setActiveFulfillmentStatus(existingOffer.status);
       }
     } else {
-      // For owner: find the active fulfillment (proposed or accepted) to show that connection's chat
-      // Priority: accepted > proposed (most recent first)
+      // For owner: find the active fulfillment (proposed, accepted, or clarifying) to show that connection's chat
+      // Priority: accepted > clarifying > proposed (most recent first)
       const { data: activeFulfillment } = await supabase
         .from("fulfillment")
         .select("id, status")
         .eq("need_id", id)
-        .in("status", ["proposed", "accepted"])
-        .order("status", { ascending: false }) // 'accepted' comes before 'proposed'
+        .in("status", ["proposed", "accepted", "clarifying"])
+        .order("status", { ascending: false }) // 'accepted' > 'clarifying' > 'proposed'
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
       
       if (activeFulfillment) {
         setActiveFulfillmentId(activeFulfillment.id);
+        setActiveFulfillmentStatus(activeFulfillment.status);
       }
     }
 
@@ -308,7 +340,73 @@ export default function NeedDetail() {
               {need.description && (
                 <div className="flex mt-1">
                   <span className="w-16 font-medium text-[10px]">Description:</span>
-                  <span className="flex-1 text-xs">{need.description}</span>
+                  <div className="flex-1 text-xs">
+                    {isSummarizing ? (
+                      <span className="text-gray-500 italic">Summarizing...</span>
+                    ) : summarizedDescription && need.description.length > 300 && !showFullDescription ? (
+                      <>
+                        <span>{summarizedDescription}</span>
+                        <button
+                          onClick={() => setShowFullDescription(true)}
+                          className="text-blue-600 hover:underline ml-2 text-xs"
+                        >
+                          Show full description
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {showFullDescription && need.description.length > 300 && (
+                          <button
+                            onClick={() => setShowFullDescription(false)}
+                            className="text-blue-600 hover:underline mb-1 text-xs block"
+                          >
+                            Show summary
+                          </button>
+                        )}
+                        <span className="whitespace-pre-wrap">{need.description}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {/* Attachments */}
+              {need.attachments && need.attachment_count > 0 && (
+                <div className="flex mt-2">
+                  <span className="w-16 font-medium text-[10px]">Attachments:</span>
+                  <div className="flex-1">
+                    {(() => {
+                      try {
+                        const atts = Array.isArray(need.attachments) 
+                          ? need.attachments 
+                          : typeof need.attachments === 'string' 
+                            ? JSON.parse(need.attachments) 
+                            : [];
+                        
+                        return (
+                          <div className="flex flex-wrap gap-2">
+                            {atts.map((att: any, idx: number) => {
+                              const url = att.url || att;
+                              const name = att.name || `Attachment ${idx + 1}`;
+                              return (
+                                <a
+                                  key={idx}
+                                  href={url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+                                >
+                                  📎 {name}
+                                </a>
+                              );
+                            })}
+                          </div>
+                        );
+                      } catch {
+                        return null;
+                      }
+                    })()}
+                  </div>
                 </div>
               )}
             </div>
@@ -414,11 +512,15 @@ export default function NeedDetail() {
                 </>
               )}
               
-              {/* Email Requester */}
-              {need.contact_email && (
+              {/* Email Requester - Only show after an offer is made */}
+              {need.contact_email && hasExistingOffer && (
                 <a
                   href={`mailto:${need.contact_email}?subject=Re: ${encodeURIComponent(need.title)}&body=Hi,%0D%0A%0D%0AI saw your need on 4MK and would like to help.%0D%0A%0D%0A`}
                   className="block w-full bg-blue-600 text-white py-1.5 px-2 rounded text-xs font-medium hover:bg-blue-700 text-center"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    window.location.href = `mailto:${need.contact_email}?subject=Re: ${encodeURIComponent(need.title)}&body=Hi,%0D%0A%0D%0AI saw your need on 4MK and would like to help.%0D%0A%0D%0A`;
+                  }}
                 >
                   📧 Email Requester
                 </a>
@@ -426,12 +528,21 @@ export default function NeedDetail() {
               
               <button
                 onClick={() => router.push('/')}
-                className="w-full bg-gray-600 text-white py-1.5 px-2 rounded text-xs font-medium hover:bg-gray-700"
+                className="w-full bg-blue-600 text-white py-1.5 px-2 rounded text-xs font-medium hover:bg-blue-700"
               >
                 Back to All Needs
               </button>
             </div>
           </>
+        )}
+
+        {/* Clarifying Status Badge */}
+        {activeFulfillmentStatus === 'clarifying' && (
+          <div className="bg-blue-50 border border-blue-200 rounded p-2 mb-3">
+            <p className="text-xs font-medium text-blue-800">
+              💬 Status: Clarifying - Questions or additional information needed
+            </p>
+          </div>
         )}
 
         {/* Comments Section - Linked to active fulfillment/connection (chat between requester and helper) */}
@@ -440,6 +551,14 @@ export default function NeedDetail() {
             needId={need.id} 
             currentUserId={user?.id} 
             fulfillmentId={activeFulfillmentId || undefined}
+          />
+        </div>
+
+        {/* Report Abuse Button */}
+        <div className="border-t pt-2 mt-2 text-center">
+          <ReportAbuseButton 
+            reportedNeedId={need.id}
+            reportedUserId={isOwner ? undefined : need.owner_id}
           />
         </div>
 

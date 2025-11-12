@@ -7,8 +7,30 @@ export default function Callback() {
   const supabase = useSupabaseClient();
   const router = useRouter();
   const [status, setStatus] = useState('Finishing sign-in...');
+  const [redirectTarget, setRedirectTarget] = useState('/dashboard');
 
   useEffect(() => {
+    if (!router.isReady) {
+      return;
+    }
+    const nextParam = router.query.next as string | undefined;
+    if (nextParam) {
+      setRedirectTarget(nextParam);
+      return;
+    }
+    if (typeof window !== 'undefined') {
+      const stored = window.localStorage.getItem('postAuthRedirect');
+      if (stored) {
+        window.localStorage.removeItem('postAuthRedirect');
+        setRedirectTarget(stored);
+      }
+    }
+  }, [router.isReady, router.query.next]);
+
+  useEffect(() => {
+    if (!router.isReady) {
+      return;
+    }
     (async () => {
       const { data, error } = await supabase.auth.getSession();
       if (error) {
@@ -17,17 +39,15 @@ export default function Callback() {
       }
       if (!data.session) await supabase.auth.refreshSession();
       
-      // Get redirect destination from URL params
-      const redirectTo = router.query.next as string || '/dashboard';
-      
+      const destination = redirectTarget || '/dashboard';
       setStatus('Signed in! 🎉 Redirecting…');
       setTimeout(() => {
-        router.push(redirectTo);
+        router.push(destination);
       }, 600);
     })();
-  }, [supabase, router]);
+  }, [supabase, router, redirectTarget]);
 
-  const redirectTo = router.query.next as string || '/dashboard';
+  const redirectTo = redirectTarget || '/dashboard';
 
   return (
     <main style={{ padding: 24 }}>

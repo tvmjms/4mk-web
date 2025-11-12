@@ -3,7 +3,6 @@
 
 import { useEffect, useState, FormEvent, useRef } from 'react';
 import { useRouter } from 'next/router';
-import { useSupabaseClient, useUser } from "@supabase/auth-helpers-react";
 import { supabase } from '@/lib/supabase';
 import { contentModerator } from '@/lib/contentModerator';
 import MediaViewer from './MediaViewer';
@@ -20,7 +19,8 @@ interface Comment {
   updated_at: string;
   moderation_status: 'approved' | 'pending' | 'rejected' | 'flagged';
   moderation_reason?: string;
-  user_profiles?: {
+  user_profile?: {
+    user_id?: string;
     display_name?: string;
   };
 }
@@ -82,16 +82,37 @@ export default function NeedComments({ needId, currentUserId, fulfillmentId }: N
     loadComments();
   }, [needId, fulfillmentId]);
 
+  const attachProfiles = async (items: Comment[]) => {
+    const userIds = Array.from(new Set(items.map((c) => c.user_id).filter(Boolean)));
+    if (userIds.length === 0) {
+      return items;
+    }
+
+    const { data: profiles, error } = await supabase
+      .from('user_profile')
+      .select('user_id, display_name')
+      .in('user_id', userIds);
+
+    if (error) {
+      console.error('Error loading user profiles for comments:', error);
+      return items;
+    }
+
+    const profileMap = new Map((profiles || []).map((profile) => [profile.user_id, profile]));
+
+    return items.map((comment) => ({
+      ...comment,
+      user_profile: profileMap.get(comment.user_id) || null,
+    }));
+  };
+
   const loadComments = async () => {
     try {
       setError(null);
       // Build query - filter by fulfillment_id if provided (connection-based chat)
       let query = supabase
         .from('need_comments')
-        .select(`
-          *,
-          user_profiles:user_id (display_name)
-        `)
+        .select('*')
         .eq('need_id', needId)
         .eq('moderation_status', 'approved');
       
@@ -108,30 +129,12 @@ export default function NeedComments({ needId, currentUserId, fulfillmentId }: N
       const { data, error } = await query.order('created_at', { ascending: true });
 
       if (error) {
-        console.error('Error loading comments with join:', error);
-        // Fallback: load comments without user profiles
-        let fallbackQuery = supabase
-          .from('need_comments')
-          .select('*')
-          .eq('need_id', needId)
-          .eq('moderation_status', 'approved');
-        
-        if (fulfillmentId) {
-          fallbackQuery = fallbackQuery.eq('fulfillment_id', fulfillmentId);
-        } else {
-          fallbackQuery = fallbackQuery.is('fulfillment_id', null);
+        console.error('Error loading comments:', error);
+        throw error;
         }
         
-        const { data: simpleData, error: simpleError } = await fallbackQuery.order('created_at', { ascending: true });
-        
-        if (simpleError) {
-          console.error('Error loading comments:', simpleError);
-          throw simpleError;
-        }
-        setComments(simpleData || []);
-      } else {
-        setComments(data || []);
-      }
+      const enriched = await attachProfiles(data || []);
+      setComments(enriched);
     } catch (error: any) {
       console.error('Error loading comments:', error);
       // Only show error if it's a critical failure
@@ -351,8 +354,8 @@ export default function NeedComments({ needId, currentUserId, fulfillmentId }: N
       // AI moderate the comment text - conduct check
       if (newComment.trim()) {
         try {
-          const textModeration = await contentModerator.moderateText(newComment);
-          if (!textModeration.approved) {
+        const textModeration = await contentModerator.moderateText(newComment);
+        if (!textModeration.approved) {
             const reasons = textModeration.reasons.length > 0 
               ? textModeration.reasons.join(', ') 
               : 'inappropriate content detected';
@@ -367,7 +370,7 @@ export default function NeedComments({ needId, currentUserId, fulfillmentId }: N
           return;
         }
       }
-      
+
       // Verify uploaded files have been moderated (they should be moderated during upload)
       // Double-check that all files passed moderation
       const unmoderatedFiles = uploadedFiles.filter(f => !f.url);
@@ -402,20 +405,19 @@ export default function NeedComments({ needId, currentUserId, fulfillmentId }: N
           attachment_count: approvedMedia.length,
           moderation_status: 'approved'
         })
-        .select(`
-          *,
-          user_profiles:user_id (display_name)
-        `)
+        .select('*')
         .single();
 
       if (error) throw error;
 
-      setComments(prev => [...prev, data]);
+      const [enrichedComment] = await attachProfiles([data]);
+
+      setComments(prev => [...prev, enrichedComment || data]);
       setNewComment('');
       setUploadedFiles([]);
 
     } catch (error: any) {
-      console.error('Error posting comment:', error);
+      console.error('Error submitting comment:', error);
       // Provide more specific error messages
       if (error?.message) {
         setError(error.message);
@@ -447,10 +449,10 @@ export default function NeedComments({ needId, currentUserId, fulfillmentId }: N
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs">
-                    {comment.user_profiles?.display_name?.[0]?.toUpperCase() || '?'}
+                    {comment.user_profile?.display_name?.[0]?.toUpperCase() || '?'}
                   </div>
                   <span className="text-sm font-medium text-gray-900">
-                    {comment.user_profiles?.display_name || 'Anonymous User'}
+                    {comment.user_profile?.display_name || 'Anonymous User'}
                   </span>
                   {comment.user_id === currentUserId && (
                     <span className="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded">You</span>

@@ -21,10 +21,30 @@ async function handleFulfillment(req: NextApiRequest, res: NextApiResponse) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const { needId, message, offerType, offerDescription, contactMethod } = req.body;
+  const { 
+    needId, 
+    message, 
+    offerType, 
+    offerDescription, 
+    contactMethod,
+    maxCashlessAmount,
+    orderId,
+    proofUrl,
+    deliveryPreferences,
+    brandPreference,
+    caseManagerInfo
+  } = req.body;
 
   if (!needId) {
     return res.status(400).json({ error: 'needId is required' });
+  }
+
+  // Validate max cashless amount (must be ≤ $100 per spec)
+  if (maxCashlessAmount !== undefined && maxCashlessAmount !== null) {
+    const amount = Number(maxCashlessAmount);
+    if (isNaN(amount) || amount < 0 || amount > 100) {
+      return res.status(400).json({ error: 'maxCashlessAmount must be between 0 and 100' });
+    }
   }
 
   // Check if this is the first offer for this need
@@ -53,6 +73,12 @@ async function handleFulfillment(req: NextApiRequest, res: NextApiResponse) {
         offer_type: offerType || 'general',
         offer_description: offerDescription || null,
         contact_method: contactMethod || 'email',
+        max_cashless_amount: maxCashlessAmount ? Number(maxCashlessAmount) : null,
+        order_id: orderId || null,
+        proof_url: proofUrl || null,
+        delivery_preferences: deliveryPreferences || null,
+        brand_preference: brandPreference || null,
+        case_manager_info: caseManagerInfo || null,
       },
     ])
     .select()
@@ -85,7 +111,13 @@ const validationRules = [
   { field: 'message', required: false, type: 'string' as const, maxLength: 500 },
   { field: 'offerType', required: false, type: 'string' as const },
   { field: 'offerDescription', required: false, type: 'string' as const, maxLength: 1000 },
-  { field: 'contactMethod', required: false, type: 'string' as const }
+  { field: 'contactMethod', required: false, type: 'string' as const },
+  { field: 'maxCashlessAmount', required: false, type: 'number' as const },
+  { field: 'orderId', required: false, type: 'string' as const, maxLength: 200 },
+  { field: 'proofUrl', required: false, type: 'string' as const, maxLength: 500 },
+  { field: 'deliveryPreferences', required: false, type: 'string' as const, maxLength: 1000 },
+  { field: 'brandPreference', required: false, type: 'string' as const, maxLength: 200 },
+  { field: 'caseManagerInfo', required: false, type: 'string' as const, maxLength: 500 }
 ];
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

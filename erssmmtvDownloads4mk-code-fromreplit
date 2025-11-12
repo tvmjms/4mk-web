@@ -1,0 +1,162 @@
+warning: in the working copy of 'pages/login.tsx', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/pages/login.tsx b/pages/login.tsx[m
+[1mindex 03ab155..02bdc56 100644[m
+[1m--- a/pages/login.tsx[m
+[1m+++ b/pages/login.tsx[m
+[36m@@ -9,6 +9,7 @@[m [mexport default function Login() {[m
+   const [loading, setLoading] = useState(false)[m
+   const [message, setMessage] = useState('')[m
+   const [checking, setChecking] = useState(false) // Start with false - show form immediately[m
+[32m+[m[32m  const [showEmailForm, setShowEmailForm] = useState(false) // Hide email/password fields initially[m
+   const router = useRouter()[m
+ [m
+   // Get the redirect destination from URL params[m
+[36m@@ -49,6 +50,15 @@[m [mexport default function Login() {[m
+   }, [router.isReady, router.query.next])[m
+ [m
+   const handleLogin = async () => {[m
+[32m+[m[32m    if (!showEmailForm) {[m
+[32m+[m[32m      // Show the form first[m
+[32m+[m[32m      setShowEmailForm(true)[m
+[32m+[m[32m      return[m
+[32m+[m[32m    }[m
+[32m+[m[32m    if (!email || !password) {[m
+[32m+[m[32m      setMessage('Please enter both email and password')[m
+[32m+[m[32m      return[m
+[32m+[m[32m    }[m
+     setLoading(true)[m
+     const { error } = await supabase.auth.signInWithPassword({ email, password })[m
+     if (error) {[m
+[36m@@ -61,6 +71,15 @@[m [mexport default function Login() {[m
+   }[m
+ [m
+   const handleMagicLink = async () => {[m
+[32m+[m[32m    if (!showEmailForm) {[m
+[32m+[m[32m      // Show the form first[m
+[32m+[m[32m      setShowEmailForm(true)[m
+[32m+[m[32m      return[m
+[32m+[m[32m    }[m
+[32m+[m[32m    if (!email) {[m
+[32m+[m[32m      setMessage('Please enter your email address')[m
+[32m+[m[32m      return[m
+[32m+[m[32m    }[m
+     setLoading(true)[m
+     const { error } = await supabase.auth.signInWithOtp({ [m
+       email,[m
+[36m@@ -73,6 +92,29 @@[m [mexport default function Login() {[m
+     setLoading(false)[m
+   }[m
+ [m
+[32m+[m[32m  const handleOAuthLogin = async (provider: 'google' | 'azure' | 'facebook' | 'github') => {[m
+[32m+[m[32m    setLoading(true)[m
+[32m+[m[32m    setMessage('')[m
+[32m+[m[41m    [m
+[32m+[m[32m    try {[m
+[32m+[m[32m      const { error } = await supabase.auth.signInWithOAuth({[m
+[32m+[m[32m        provider: provider as any, // Supabase uses 'azure' for Microsoft[m
+[32m+[m[32m        options: {[m
+[32m+[m[32m          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`[m
+[32m+[m[32m        }[m
+[32m+[m[32m      })[m
+[32m+[m[41m      [m
+[32m+[m[32m      if (error) {[m
+[32m+[m[32m        setMessage(error.message)[m
+[32m+[m[32m        setLoading(false)[m
+[32m+[m[32m      }[m
+[32m+[m[32m      // Note: OAuth redirects away, so we won't reach here on success[m
+[32m+[m[32m    } catch (err: any) {[m
+[32m+[m[32m      setMessage(err.message || 'Failed to initiate OAuth login')[m
+[32m+[m[32m      setLoading(false)[m
+[32m+[m[32m    }[m
+[32m+[m[32m  }[m
+[32m+[m
+   // Show loading while checking authentication status[m
+   if (checking) {[m
+     return ([m
+[36m@@ -86,7 +128,7 @@[m [mexport default function Login() {[m
+ [m
+   return ([m
+     <div className="flex items-center justify-center min-h-screen px-4">[m
+[31m-      <div className="card-container w-full max-w-xl h-[300px]">[m
+[32m+[m[32m      <div className="card-container w-full max-w-xl" style={{ minHeight: '380px' }}>[m
+         {/* rim, gold frame, and two stacked 4MK headers (shadow + main) */}[m
+         <div className="card-rim" />[m
+         <div className="card-gold-frame" />[m
+[36m@@ -95,70 +137,140 @@[m [mexport default function Login() {[m
+ [m
+         {/* Inputs remain in a narrower column for readability */}[m
+         <div className="max-w-sm mx-auto relative z-10 pt-2">[m
+[31m-          <h1 className="text-xl font-bold text-center mb-4 text-white">Welcome Back</h1>[m
+[31m-[m
+[31m-          <input[m
+[31m-            className="w-full p-2 mb-2 rounded-xl card-input focus:outline-none text-sm"[m
+[31m-            type="email"[m
+[31m-            placeholder="Your email"[m
+[31m-            value={email}[m
+[31m-            onChange={(e) => setEmail(e.target.value)}[m
+[31m-          />[m
+[31m-[m
+[31m-          <input[m
+[31m-            className="w-full p-2 mb-3 rounded-xl card-input focus:outline-none text-sm"[m
+[31m-            type="password"[m
+[31m-            placeholder="Your password"[m
+[31m-            value={password}[m
+[31m-            onChange={(e) => setPassword(e.target.value)}[m
+[31m-          />[m
+[31m-[m
+[31m-        {/* Forgot password link moved above the buttons */}[m
+[31m-        <div className="mb-1 text-center">[m
+[31m-          <Link href="/forgot" className="text-[10px] text-white hover:text-opacity-80 transition-colors">[m
+[31m-            Forgot your password?[m
+[31m-          </Link>[m
+[31m-        </div>[m
+[32m+[m[32m          <h1 className="text-xl font-bold text-center mb-3 text-white">Welcome Back</h1>[m
+ [m
+[31m-        {/* Compact 3-button layout */}[m
+[31m-        <div className="flex items-center justify-center gap-2">[m
+[31m-          <button[m
+[31m-            className="py-1 px-2 rounded-md font-semibold transition-all text-[10px] btn-silver whitespace-nowrap"[m
+[31m-            style={{ width: 120 }}[m
+[31m-            onClick={handleLogin}[m
+[31m-            disabled={loading}[m
+[31m-          >[m
+[31m-            {loading ? 'Logging in...' : 'Login with Password'}[m
+[31m-          </button>[m
+[31m-[m
+[31m-          <button[m
+[31m-            className="py-1 px-2 rounded-md font-medium text-[10px] btn-silver whitespace-nowrap"[m
+[31m-            style={{ width: 120 }}[m
+[31m-            onClick={handleMagicLink}[m
+[31m-            disabled={loading}[m
+[31m-          >[m
+[31m-            {loading ? 'Sending...' : 'Send Magic Link'}[m
+[31m-          </button>[m
+[31m-[m
+[31m-          <Link[m
+[31m-            href="/register"[m
+[31m-            className="py-1 px-2 rounded-md text-center font-semibold text-[10px] btn-silver whitespace-nowrap"[m
+[31m-            style={{ width: 120 }}[m
+[31m-          >[m
+[31m-            Create Account[m
+[31m-          </Link>[m
+[31m-        </div>[m
+[32m+[m[32m          {/* OAuth Login Buttons - Compact Layout */}[m
+[32m+[m[32m          <div className="mb-3">[m
+[32m+[m[32m            <div className="flex items-center justify-center gap-2 mb-2">[m
+[32m+[m[32m              <button[m
+[32m+[m[32m                className="py-1.5 px-3 rounded-md font-semibold text-[10px] btn-silver-3d transition-all flex items-center justify-center gap-1.5 whitespace-nowrap flex-1"[m
+[32m+[m[32m                onClick={() => handleOAuthLogin('google')}[m
+[32m+[m[32m                disabled={loading}[m
+[32m+[m[32m                type="button"[m
+[32m+[m[32m              >[m
+[32m+[m[32m                <svg className="w-4 h-4" viewBox="0 0 24 24">[m
+[32m+[m[32m                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>[m
+[32m+[m[32m                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>[m
+[32m+[m[32m                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>[m
+[32m+[m[32m                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>[m
+[32m+[m[32m                </svg>[m
+[32m+[m[32m                Google[m
+[32m+[m[32m              </button>[m
+ [m
+[31m-        {/* Compact tagline */}[m
+[31m-        <div className="mt-3 text-[9px] tracking-wide
