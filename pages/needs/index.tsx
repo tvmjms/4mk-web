@@ -29,7 +29,7 @@ export default function AllNeedsPage() {
           {/* Title positioned absolutely like home page */}
           <div className="card-logo-main">All Needs</div>
           
-          <div className="w-full relative z-10 pt-10">
+          <div className="w-full relative z-10 pt-10 pb-3">
             {/* Create Need Button */}
             <div className="mb-3 flex justify-center">
               <Link
