@@ -154,6 +154,55 @@ body {
     0 2px 0 0 rgba(255,255,255,0.3) inset;
 }
 
+/* Gold stat board for dashboard */
+.gold-stat-board {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+  align-items: center;
+}
+
+.gold-stat-card {
+  background: linear-gradient(135deg, #d4af37 0%, #f4d03f 40%, #f7dc6f 60%, #d4af37 100%);
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  box-shadow: 
+    0 4px 12px rgba(0,0,0,0.2),
+    inset 0 1px 0 rgba(255,255,255,0.4),
+    inset 0 -1px 0 rgba(0,0,0,0.2);
+  padding: 0.375rem 0.75rem;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 60px;
+  transform: perspective(1000px) rotateX(5deg);
+  transition: all 0.2s ease;
+}
+
+.gold-stat-card:hover {
+  transform: perspective(1000px) rotateX(5deg) translateY(-2px);
+  box-shadow: 
+    0 6px 16px rgba(0,0,0,0.3),
+    inset 0 1px 0 rgba(255,255,255,0.5),
+    inset 0 -1px 0 rgba(0,0,0,0.3);
+}
+
+.gold-stat-label {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: #7c5a00;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.125rem;
+}
+
+.gold-stat-value {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #4a3a00;
+  line-height: 1;
+}
+
 /* Input styles */
 .card-input {
   /* 3D input appearance: black metal/gunmetal gradient */
@@ -239,11 +288,33 @@ body {
 /* ensure the form content sits above decorative layers */
 .card-container > .relative.z-10 { z-index: 10; }
 
+/* 
+ * Standardized list card styling - consistent spacing for all list cards
+ * Used for full-page/dashboard view - matches list-gradient-panel padding
+ * Padding: 18px 30px 12px 30px
+ *   - Top: 18px (matches gold frame inset)
+ *   - Left/Right: 30px (18px frame + 12px content margin = matches grid gap-3)
+ *   - Bottom: 12px (matches grid gap-3 spacing)
+ * 
+ * All list cards must use this class or list-gradient-panel for consistent spacing
+ */
+.card-container.list-card {
+  padding: 18px 30px 12px 30px !important; /* Standardized padding - matches list-gradient-panel */
+}
+
 /* Gradient panel used for the Needs list (Purple business card to match left card) */
+/* 
+ * Standardized list card panel styling
+ * Used for compact view (home page) - matches list-card padding
+ * Padding: 18px 30px 12px 30px
+ *   - Top: 18px (matches gold frame inset)
+ *   - Left/Right: 30px (18px frame + 12px content margin = matches grid gap-3)
+ *   - Bottom: 12px (matches grid gap-3 spacing)
+ */
 .list-gradient-panel {
   background: linear-gradient(135deg, #6b21a8 0%, #581c87 100%);
   border-radius: 6px; /* match purple card corners */
-  padding: 18px 18px 8px 18px; /* reduced bottom padding for tight spacing */
+  padding: 18px 30px 12px 30px; /* Standardized padding - matches list-card class */
   box-shadow:
     0 20px 35px rgba(0,0,0,0.35),
     0 0 0 1px rgba(255,255,255,0.08) inset,
@@ -252,7 +323,7 @@ body {
   transform: perspective(1200px) translateZ(20px);
   transform-style: preserve-3d;
   transition: all 0.3s ease;
-  margin: 1.5rem auto; /* match card-container margin for alignment */
+  margin: 0; /* No margin - spacing handled by parent grid */
 }
 
 .list-gradient-panel:hover {
@@ -344,6 +415,60 @@ body {
 .btn-turquoise:hover { filter: brightness(1.05); }
 .btn-turquoise:active { filter: brightness(0.98); transform: translateY(1px); }
 .btn-turquoise:disabled { opacity: 0.6; pointer-events: none; }
+
+/* Glossy white input fields for login/register */
+.card-input-light {
+  background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 50%, #ffffff 100%) !important;
+  border: 1px solid rgba(0, 0, 0, 0.15) !important;
+  color: #1f2937 !important;
+  transition: all 0.18s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.9) !important;
+  -webkit-appearance: none;
+  appearance: none;
+  font-weight: 500;
+}
+
+.card-input-light::placeholder {
+  color: rgba(107, 114, 128, 0.6) !important;
+}
+
+.card-input-light:focus {
+  background: linear-gradient(180deg, #ffffff 0%, #f9fafb 50%, #ffffff 100%) !important;
+  border-color: rgba(13, 148, 136, 0.5) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.95) !important;
+  outline: none;
+}
+
+/* Gold card frame wrapper - wraps entire content */
+.gold-card-frame {
+  position: relative;
+  padding: 1.5rem;
+}
+
+/* Gold button frame - for wrapping button groups with gold border */
+.gold-button-frame {
+  position: relative;
+  padding: 0.75rem;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.gold-button-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background: linear-gradient(135deg, #b8860b 0%, #f0d27a 40%, #fff3bf 60%, #c49a27 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.15) inset;
+  pointer-events: none;
+}
 
 /* Metallic orange buttons to match orange card */
 .btn-orange {

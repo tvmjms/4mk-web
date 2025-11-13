@@ -386,7 +386,7 @@ export default function NeedDetail() {
             
             <button
               onClick={() => router.push('/')}
-              className="w-full bg-gray-600 text-white py-1.5 px-2 rounded text-xs font-medium hover:bg-gray-700"
+              className="w-full bg-blue-600 text-white py-1.5 px-2 rounded text-xs font-medium hover:bg-blue-700"
             >
               Back to All Needs
             </button>
